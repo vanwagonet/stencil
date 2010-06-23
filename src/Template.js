@@ -29,7 +29,9 @@
 	/**
 	 * Template constructor
 	 *  Sets up template properties
-	 * @param Object o A hash of the settings to override
+	 * @constructor
+	 * @version 0.1
+	 * @param {Object} o A hash of the settings to override
 	 **/
 	function Template(o) {
 		o = o || {};
@@ -64,18 +66,37 @@
 	 *  Sets up defaults for properties and attaches public methods
 	 *  Defaults can be changed by updating the prototype
 	 **/
-	Template.prototype = {
-		input: MT, start: '<?', stop: '?>', send: '=', nest: '!=', async: '!',
-		handlers: { compiled: [], complete: [], exec: [], error: [] },
-		compiled: null, output: null,
-	};
+	Template.prototype = {};
+	/** The template text to process */
+	Template.prototype.input = MT;
+	/** The code start tag in the template */
+	Template.prototype.start = '<?';
+	/** The code stop tag in the template */
+	Template.prototype.stop = '?>';
+	/** The tag suffix for echoing result of the expression */
+	Template.prototype.send = '=';
+	/** The tag suffix for including the template identified
+	 *  by the result of the expression */
+	Template.prototype.nest = '!=';
+	/** The tag suffix for calling the function and wrapping
+	 *  the remainer of the template in a callback */
+	Template.prototype.async = '!';
+	/** The function compiled from the template text */
+	Template.prototype.compiled = null;
+	/** The resulting output from executing the template */
+	Template.prototype.output = null;
+
+	// used internally to store event handlers
+	Template.prototype.handlers = { compiled: [], complete: [], exec: [], error: [] };
 
 
 	/**
 	 * Add a function to execute on an event
-	 * @param String event The name of the event the function handles
-	 * @param Function fn The handler to execute on the event
-	 * @return Template this
+	 * @methodOf Template.prototype
+	 * @param {String} event The name of the event the function handles
+	 * @param {Function} fn The handler to execute on the event
+	 * @return this
+	 * @type Template
 	 **/
 	function addEventListener(event, fn) {
 		if (!this.handlers[event]) { return; }
@@ -87,9 +108,11 @@
 
 	/**
 	 * Remove a handler from firing on an event
-	 * @param String event The name of the event the function handles
-	 * @param Function fn The handler to remove from the event
-	 * @return Template this
+	 * @methodOf Template.prototype
+	 * @param {String} event The name of the event the function handles
+	 * @param {Function} fn The handler to remove from the event
+	 * @return this
+	 * @type Template
 	 **/
 	function removeEventListener(event, fn) {
 		if (!this.handlers[event]) { return; }
@@ -103,8 +126,10 @@
 
 	/**
 	 * Execute all handlers for the specified event
-	 * @param String event The name of the event
-	 * @return Template this
+	 * @methodOf Template.prototype
+	 * @param {String} event The name of the event
+	 * @return this
+	 * @type Template
 	 **/
 	function dispatchEvent(event) {
 		if (!this.handlers[event]) { return; }
@@ -118,8 +143,10 @@
 
 	/**
 	 * Turn input into executable JavaScript
-	 * @param Boolean use_cached If true, prevents the template from recompiling
-	 * @return Template this (the new code is in this.compiled)
+	 * @methodOf Template.prototype
+	 * @param {Boolean} use_cached If true, prevents the template from recompiling
+	 * @return this (the new code is in this.compiled)
+	 * @type Template
 	 **/
 	function compile(use_cached) {
 		if (use_cached && this.compiled) { return this; }
@@ -197,9 +224,11 @@
 
 	/**
 	 * Process the template given a data context
-	 * @param Object data The data context for the template
+	 * @methodOf Template.prototype
+	 * @param {Object} data The data context for the template
 	 *  data will be in scope in the template
-	 * @return Template this
+	 * @return this
+	 * @type Template
 	 **/
 	function exec(data) {
 		data = data || {}; // must be an object
@@ -215,9 +244,10 @@
 
 
 	/**
-	 * Append the arguments to the template output
-	 * @params The arguments to be appended as strings
-	 * @return Template this
+	 * Appends all the arguments to the template output
+	 * @methodOf Template.prototype
+	 * @return this
+	 * @type Template
 	 **/
 	function echo() {
 		this.output += Array.prototype.join.call(arguments, MT);
@@ -228,10 +258,12 @@
 
 	/**
 	 * Execute the child template and append its output
-	 * @param String id The identifier for the nested template
-	 * @param Object data The data context for the nest template
-	 * @param Function next The continuation after the nested template
-	 * @return Template this
+	 * @methodOf Template.prototype
+	 * @param {String} id The identifier for the nested template
+	 * @param {Object} data The data context for the nest template
+	 * @param {Function} next The continuation after the nested template
+	 * @return this
+	 * @type Template
 	 **/
 	function include(id, data, next) {
 		// if more args are passed in, the last is the continuation
@@ -251,10 +283,12 @@
 	/**
 	 * Create a callback with the correct context
 	 *  Used internally for async tags
-	 * @param Function fn The function to wrap
-	 * @param Object scope The 'this' to use inside fn
-	 * @params The remaining arguments are passed to fn when called
+	 * @methodOf Template.prototype
+	 * @param {Function} fn The function to wrap
+	 * @param {Object} scope The 'this' to use inside fn
+	 * @param arguments The remaining arguments are passed to fn when called
 	 * @return The function wrapped with the scope and arguments
+	 * @type Function
 	 **/
 	function bind(fn, scope) {
 		var args = Array.prototype.slice.call(arguments, 2);
@@ -265,9 +299,11 @@
 
 	/**
 	 * Get a Template object from a DOM Element
-	 * @param String id The identifier for the DOM Element
-	 * @param Object settings A hash of Template settings (or Template object)
-	 * @return Template the template created from the Element's content
+	 * @methodOf Template
+	 * @param {String} id The identifier for the DOM Element
+	 * @param {Object} settings A hash of Template settings (or Template object)
+	 * @return The template created from the Element's content
+	 * @type Template
 	 **/
 	function getTemplateById(id, settings) {
 		// populate template object, strip surrounding CDATA

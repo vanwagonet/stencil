@@ -7,9 +7,12 @@ stencil is a templating engine designed by Andy VanWagoner ([thetalecrafter]) to
   * Async nested templates.
   * Async function tags to ensure template is processed sequentially.
 
+## Documentation
+
+Read api documentation online at [github](http://thetalecrafter.github.com/stencil/docs/).
+
 ## Major TODOs
 
-  * Generate docs from comments
   * More detailed examples
   * Determine api direction (Hopefully with community input)
   * Write test cases
