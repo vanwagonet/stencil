@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Test Page</title>
+</head>
+<body>
+	<script src="Template.js"></script>
+	<script id="template" type="text/template">
+	<![CDATA[
+		<div>
+			<?!= 'nested' ?>
+			<? var k = 0; // this comment will end with the end hook. ?>
+			<table>
+			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
+				<tr class="<?= k % 2 ? 'odd' : 'even' ?>">
+					<th><?= k ?></th>
+					<td>This is the <?= k, (k % 100 > 10 && k % 100 < 20) ? 'th' : data.suffix[Math.min(k % 10, 4)] ?> row.</td>
+				</tr>
+			<? } ?>
+			</table>
+			<pre>
+				This text should be <? ?>
+unbroken by newline.
+			</pre>
+			<? /* some bad syntax ?> this is all commented out <? */ ?>
+		</div>
+	]]>
+	</script>
+	<script id="nested" type="text/template">
+	<![CDATA[
+		<div><?= data.nested ?></div>
+	]]>
+	</script>
+	<script>
+		var complete, init, compile, exec, total, start = (new Date()).getTime();
+		var template = Template.getTemplateById('template', { oncomplete: function() { complete = (new Date()).getTime(); } });
+		init = (new Date()).getTime();
+		template.compile();
+		compile = (new Date()).getTime();
+		template.exec({
+			suffix: ['th', 'st', 'nd', 'rd', 'th'],
+			nested: 'Nested Template'
+		});
+		exec = (new Date()).getTime();
+		document.write(template.output);
+		total = (new Date()).getTime();
+		alert(
+			'init:' + (init - start) +
+			'ms compile:' + (compile - init) +
+			'ms exec:' + (exec - compile) +
+			'ms complete:' + (complete - compile) +
+			'ms write:' + (total - exec) + 'ms'
+		);
+	</script>
+</body>
+</html>

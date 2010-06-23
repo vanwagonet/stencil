@@ -1,0 +1,4 @@
+<?! (function(t,fn){setTimeout(fn,t)}), null, 5000 ?>
+{
+	"hello":"world"
+}
