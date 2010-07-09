@@ -1,4 +1,6 @@
 <?! (function(t,fn){setTimeout(fn,t)}), null, 5000 ?>
 {
-	"hello":"world"
+	"hello":"world",
+	"clicked":<?= data.t ?>,
+	"responded":<?= Date.now() - data.t ?>
 }

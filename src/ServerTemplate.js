@@ -9,6 +9,7 @@
 var Template = require('./Template').Template,
 	fs       = require('fs'),
 	sys      = require('sys'),
+	Url      = require('url'),
 	Path     = require('path'),
 
 	DEFAULT_PATH = '/index.html',
@@ -191,7 +192,9 @@ ServerTemplate.getTemplateByFilename = getTemplateByFilename;
 function handleRequest(request, response) {
 	var started = false;
 
-	var template = ServerTemplate.getTemplateByFilename(request.url, {
+	var url = Url.parse(request.url, true);
+
+	var template = ServerTemplate.getTemplateByFilename(url.pathname, {
 		request:  request,
 		response: response,
 		onerror:  function(err) {
@@ -216,7 +219,7 @@ function handleRequest(request, response) {
 		}
 	});
 
-	return template.exec({});
+	return template.exec(url.query || {});
 }
 ServerTemplate.handleRequest = handleRequest;
 /** The root path to search for template files */
