@@ -1,4 +1,4 @@
-<?! (function(t,fn){setTimeout(fn,t)}), null, 5000 ?>
+<?! setTimeout(resume, 5000); ?>
 {
 	"hello":"world",
 	"clicked":<?= data.t ?>,

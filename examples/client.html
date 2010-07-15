@@ -4,11 +4,11 @@
 	<title>Test Page</title>
 </head>
 <body>
-	<script src="Template.js"></script>
+	<script src="../src/Template.js"></script>
 	<script id="template" type="text/template">
 	<![CDATA[
 		<div>
-			<?!= 'nested' ?>
+			<?# 'nested' ?>
 			<? var k = 0; // this comment will end with the end hook. ?>
 			<table>
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
@@ -49,7 +49,8 @@ unbroken by newline.
 			'ms compile:' + (compile - init) +
 			'ms exec:' + (exec - compile) +
 			'ms complete:' + (complete - compile) +
-			'ms write:' + (total - exec) + 'ms'
+			'ms write:' + (total - exec) +
+			'ms total:' + (total - start) + 'ms'
 		);
 	</script>
 </body>

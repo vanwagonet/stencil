@@ -12,12 +12,12 @@
 		ECHO_START  = 'this.' + ECHO + '(', ECHO_DONE = ');',
 		STAT_START  = ECHO_START + "'",     STAT_DONE = "');",
 
-		ASYNC_START = 'Function.prototype.call.call(',
-		ASYNC_CONT  = ',this.bind(function(data){',
+		ASYNC_START = '(function(resume){',
+		ASYNC_CONT  = '})(this.bind(function(data){',
 		ASYNC_DONE  = '},this,data))',
 
-		NEST_START  = 'this.' + NEST + '((',
-		NEST_CONT   = '),' + DATA + ASYNC_CONT,
+		NEST_START  = 'this.' + NEST + '(',
+		NEST_CONT   = ',data,this.bind(function(data){',
 
 		// find & properly encode quotes & newlines
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED   = "$1\\'",
@@ -77,9 +77,9 @@
 	Template.prototype.send = '=';
 	/** The tag suffix for including the template identified
 	 *  by the result of the expression */
-	Template.prototype.nest = '!=';
-	/** The tag suffix for calling the function and wrapping
-	 *  the remainer of the template in a callback */
+	Template.prototype.nest = '#';
+	/** The tag suffix for async blocks, after which
+	 *  any execution is paused, and only resumed by calling resume() */
 	Template.prototype.async = '!';
 	/** The function compiled from the template text */
 	Template.prototype.compiled = null;
@@ -267,6 +267,7 @@
 	 **/
 	function include(id, data, next) {
 		// if more args are passed in, the last is the continuation
+		// this can happen if the user passes in custom data for the child
 		if (arguments.length > 3) { next = arguments[arguments.length - 1]; }
 
 		var parent = this, child = Template.getTemplateById(id, parent);
@@ -315,8 +316,8 @@
 	Template.getTemplateById = getTemplateById;
 
 
-	// attach to namespace or exports
-	if (this.window && this.window === window) { this.Template = Template; }
+	// attach to namespace or exports (in IE this.window === window is false)
+	if (this.window && this.window == window) { window.Template = Template; }
 	else { exports.Template = Template; }
 	return Template;
 })();

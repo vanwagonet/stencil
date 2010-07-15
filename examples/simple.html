@@ -7,7 +7,7 @@
 <body>
 	This is the <?= 'dynamic' ?> page.
 	<button onclick="$.get('simple.json?t=' + (new Date).getTime(), function(o, status, xhr){ $('#console').append('<p>' + status + ' took ' + o.responded + 'ms</p>'); }, 'json');">Get</button>
-	<script><?!= 'test.bogus' ?></script>
+	<script><?# 'test.bogus' ?></script>
 	<div id="console"></div>
 </body>
 </html>
