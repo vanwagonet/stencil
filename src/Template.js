@@ -9,15 +9,17 @@
 	var MT    = '',     NL   = '\n',      CR   = '\r',
 		ECHO  = 'echo', NEST = 'include', DATA = 'data',
 
+		PARAMS = DATA,
+
 		ECHO_START  = 'this.' + ECHO + '(', ECHO_DONE = ');',
 		STAT_START  = ECHO_START + "'",     STAT_DONE = "');",
 
 		ASYNC_START = '(function(resume){',
-		ASYNC_CONT  = '})(this.bind(function(data){',
-		ASYNC_DONE  = '},this,data))',
+		ASYNC_CONT  = '})(this.bind(function(' + PARAMS + '){',
+		ASYNC_DONE  = '},this,arguments))',
 
 		NEST_START  = 'this.' + NEST + '(',
-		NEST_CONT   = ',data,this.bind(function(data){',
+		NEST_CONT   = ',data,this.bind(function(' + PARAMS + '){',
 
 		// find & properly encode quotes & newlines
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED   = "$1\\'",
@@ -215,7 +217,7 @@
 		while (n--) { fn += ASYNC_DONE; }
 
 		// compile & cache resulting script as a function
-		this.compiled = new Function(DATA, fn);
+		this.compiled = new Function(PARAMS, fn);
 		this.dispatchEvent('compiled');
 		return this;
 	}
@@ -287,13 +289,12 @@
 	 * @methodOf Template.prototype
 	 * @param {Function} fn The function to wrap
 	 * @param {Object} scope The 'this' to use inside fn
-	 * @param arguments The remaining arguments are passed to fn when called
+	 * @param {Arguments} args The arguments passed to fn when called
 	 * @return The function wrapped with the scope and arguments
 	 * @type Function
 	 **/
-	function bind(fn, scope) {
-		var args = Array.prototype.slice.call(arguments, 2);
-		return function() { fn.apply(scope, args); };
+	function bind(fn, scope, args) {
+		return function() { return fn.apply(scope, args); };
 	}
 	Template.prototype.bind = bind;
 

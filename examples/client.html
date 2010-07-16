@@ -4,11 +4,13 @@
 	<title>Test Page</title>
 </head>
 <body>
+	<div id="out"></div>
 	<script src="../src/Template.js"></script>
 	<script id="template" type="text/template">
 	<![CDATA[
 		<div>
 			<?# 'nested' ?>
+			<?# 'nested', { msg: 'Custom data passed to child template' } ?>
 			<? var k = 0; // this comment will end with the end hook. ?>
 			<table>
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
@@ -27,31 +29,56 @@ unbroken by newline.
 	]]>
 	</script>
 	<script id="nested" type="text/template">
-	<![CDATA[
-		<div><?= data.nested ?></div>
-	]]>
+		<![CDATA[<div><?= data.msg ?></div>]]>
 	</script>
 	<script>
-		var complete, init, compile, exec, total, start = (new Date()).getTime();
-		var template = Template.getTemplateById('template', { oncomplete: function() { complete = (new Date()).getTime(); } });
+		var out = document.getElementById('out'), // output div
+			done, init, cmpl, exec, wait, end, // timing vars
+			start = (new Date()).getTime();
+
+		function output() {
+			// output onto the page
+			wait = (new Date()).getTime();
+			out.innerHTML += template.output;
+			end  = (new Date()).getTime();
+
+			// preped timing information
+			out.innerHTML = 
+				'init: '        + (init - start) +
+				'ms compile: '  + (cmpl - init) +
+				'ms execute: '  + (exec - cmpl) +
+				'ms complete: ' + (done - cmpl) +
+				'ms write: '    + (end  - wait) +
+				'ms total: '    + (done - start + end - wait) +
+				'ms <br/><br/>' + out.innerHTML;
+
+			// don't execute twice
+			output = function(){};
+		}
+
+		// initialize the template, getting the content from the script tag
+		var template = Template.getTemplateById('template', {
+			oncomplete: function() {
+				done = (new Date()).getTime();
+				// make sure exec timing is done
+				if (exec) { output(); }
+			}
+		});
 		init = (new Date()).getTime();
+
+		// compile the template
 		template.compile();
-		compile = (new Date()).getTime();
+		cmpl = (new Date()).getTime();
+
+		// execute the template
 		template.exec({
 			suffix: ['th', 'st', 'nd', 'rd', 'th'],
-			nested: 'Nested Template'
+			msg: 'Message in nested template'
 		});
 		exec = (new Date()).getTime();
-		document.write(template.output);
-		total = (new Date()).getTime();
-		alert(
-			'init:' + (init - start) +
-			'ms compile:' + (compile - init) +
-			'ms exec:' + (exec - compile) +
-			'ms complete:' + (complete - compile) +
-			'ms write:' + (total - exec) +
-			'ms total:' + (total - start) + 'ms'
-		);
+
+		// make sure complete timing is done
+		if (done) { output(); }
 	</script>
 </body>
 </html>
