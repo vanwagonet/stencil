@@ -9,14 +9,14 @@
 	var MT    = '',     NL   = '\n',      CR   = '\r',
 		ECHO  = 'echo', NEST = 'include', DATA = 'data',
 
-		PARAMS = DATA,
+		PARAMS = DATA + ',template',
 
 		ECHO_START  = 'this.' + ECHO + '(', ECHO_DONE = ');',
 		STAT_START  = ECHO_START + "'",     STAT_DONE = "');",
 
 		ASYNC_START = '(function(resume){',
 		ASYNC_CONT  = '})(this.bind(function(' + PARAMS + '){',
-		ASYNC_DONE  = '},this,arguments))',
+		ASYNC_DONE  = '},this,[' + PARAMS + ']))',
 
 		NEST_START  = 'this.' + NEST + '(',
 		NEST_CONT   = ',data,this.bind(function(' + PARAMS + '){',

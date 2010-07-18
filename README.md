@@ -1,15 +1,51 @@
 # stencil
 
-stencil is a templating engine designed by Andy VanWagoner ([thetalecrafter]) to enable templates to run in an environment with asynchrounous I/O, such as [node](http://nodejs.org).
+stencil is a templating engine designed by Andy VanWagoner
+([thetalecrafter](http://github.com/thetalecrafter))
+to enable templates to run in an environment with asynchrounous I/O,
+such as [node](http://nodejs.org).
 
 ## Features
 
   * Async nested templates.
-  * Async function tags to ensure template is processed sequentially.
+  * Async tag to ensure template is processed sequentially.
 
-## Documentation
+## API Documentation
 
 Read api documentation online at [github](http://thetalecrafter.github.com/stencil/docs/).
+
+## Usage
+
+Templates are specified using php/asp syntax, with code inside special tags.
+By default the tags are php-style:
+
+	<? javascript code here ?>
+
+There are also suffixes to the opening tag for ouput, include, and async blocks.
+
+	<?= 'Today is ' + (new Date()) /* result included in output */ ?>
+	<?= 'hello', ' ', 'world' /* multiple results can be output */ ?>
+	
+	<?# 'child-template-id' /* result passed as id to include() */ ?>
+	<?# 'child', { custom: 'data' } /* a separate data object in child */ ?>
+	
+	<?! setTimeout(resume, 1000); /* functionally equivalent to php's usleep(1000) */ ?>
+	<?! someAsyncFunction(param1, function whendone(result) {
+			// do stuff with result
+			template.echo(result);
+			resume(); // continue processing the rest of the template
+		}); ?>
+
+Some notes to remember:
+
+1. The code in the output and include tags must be a comma separated list of expressions.
+2. If only one expression is in the include tag,
+the parent template's data object is passed to the child template.
+3. Otherwise the second expression in the include tag will be passed to the child template as data.
+4. Additional expressions in the include tag will be ignored.
+5. Unlike regular code tags, async tags cannot not include partial statements.
+All of the code will be wrapped into a single function.
+
 
 ## Major TODOs
 
