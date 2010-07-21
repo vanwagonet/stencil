@@ -227,7 +227,6 @@
 
 		// compile & cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
-		console.log(fn);
 		this.dispatchEvent('compiled');
 		if (next) { next.call(this); }
 		return this;

@@ -101,7 +101,7 @@ ServerTemplate.prototype.compile = compile;
  * Get a ServerTemplate object from a file
  * @methodOf ServerTemplate
  * @param {String} id The filename to use for the template
- * @param {Object} settings A hash of settings (or SereverTemplate object)
+ * @param {Object} settings A hash of settings (or ServerTemplate object)
  * @return The template created from the file's content
  * @type ServerTemplate
  **/
@@ -151,7 +151,7 @@ function handleRequest(request, response) {
 		ondata: function(data) {
 			response.write(data, UTF8);
 		},
-		oncomplete: function() {
+		onend: function() {
 			response.end();
 			sys.log('Complete: ' + request.url);
 		}
