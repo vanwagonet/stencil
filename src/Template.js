@@ -1,5 +1,5 @@
 /*!
- * Stencil Template v0.1
+ * Stencil Template v0.2
  *  Async templating for JavaScript
  * Copyright(c) 2010 Andy VanWagoner
  * MIT licensed
@@ -26,7 +26,12 @@
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED   = "$1\\'",
 		NEWLINE_RE  = /(\r?\n)/g,   NEWLINE_ESCAPED = '\\\n',
 
-		CALL_DONE   = "template.dispatchEvent('end')";
+		CALL_DONE   = "template.dispatchEvent('end')",
+
+		// in IE this.window === window is false
+		browser     = this.window && this.window == window,
+		fs          = !browser && require('fs'),
+		UTF8 = 'utf-8', ERROR = 'error', DEFAULT_PATH = 'index.html';;
 
 
 	/**
@@ -70,24 +75,28 @@
 	 *  Defaults can be changed by updating the prototype
 	 **/
 	Template.prototype = {};
+	/** The identifier for the template (filename, url, or dom id) */
+	Template.prototype.id       = null;
+	/** The stat object populated when the template file is loaded */
+	Template.prototype.stat     = null;
 	/** The template text to process */
-	Template.prototype.input = MT;
+	Template.prototype.input    = MT;
 	/** The code start tag in the template */
-	Template.prototype.start = '<?';
+	Template.prototype.start    = '<?';
 	/** The code stop tag in the template */
-	Template.prototype.stop = '?>';
+	Template.prototype.stop     = '?>';
 	/** The tag suffix for echoing result of the expression */
-	Template.prototype.echo = '=';
+	Template.prototype.echo     = '=';
 	/** The tag suffix for including the template identified
 	 *  by the result of the expression */
-	Template.prototype.nest = '#';
+	Template.prototype.nest     = '#';
 	/** The tag suffix for async blocks, after which
-	 *  any execution is paused, and only resumed by calling resume() */
-	Template.prototype.async = '!';
+	 *  any execution is paused, and only resumed by calling output.resume() */
+	Template.prototype.async    = '!';
 	/** The function compiled from the template text */
 	Template.prototype.compiled = null;
 	/** The constructor of the template */
-	Template.prototype.self = Template;
+	Template.prototype.self     = Template;
 
 	/** @private used internally to store event handlers */
 	Template.prototype.handlers = { compiled: [], end: [], exec: [], error: [], data: [] };
@@ -147,21 +156,8 @@
 	Template.prototype.dispatchEvent = dispatchEvent;
 
 
-	/**
-	 * Turn input into executable JavaScript
-	 * @methodOf Template.prototype
-	 * @param {Boolean} use_cached If true, prevents the template from recompiling
-	 * @param {Function} next Called when the code is ready to execute
-	 * @return this (the new code is in this.compiled)
-	 * @type Template
-	 **/
-	function compile(use_cached, next) {
-		// already compiled
-		if (use_cached && this.compiled) {
-			if (next) { next.call(this); }
-			return this;
-		}
-
+	/** @private */
+	function compile_fn(next) {
 		var s, i = 0, n = 0, // start, end, nested template count
 			fn    = MT, // resulting script
 			src   = this.input, // cache vars used in loop
@@ -227,8 +223,58 @@
 
 		// compile & cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
-		this.dispatchEvent('compiled');
+		this.dispatchEvent('compiled', this.compiled);
 		if (next) { next.call(this); }
+		return this;
+	}
+
+
+	/**
+	 * Turn input into executable JavaScript
+	 * @methodOf Template.prototype
+	 * @param {Boolean} use_cached If true, prevents the template from recompiling
+	 * @param {Function} next Called when the code is ready to execute
+	 * @return this (the new code is in this.compiled)
+	 * @type Template
+	 **/
+	function compile(use_cached, next) {
+		// already compiled
+		if (use_cached && this.compiled) {
+			if (next) { next.call(this); }
+			return this;
+		}
+
+		// already has template input
+		if (this.input) { return compile_fn.call(this, next); }
+
+		// get input from dom id
+		if (browser && document.getElementById(this.id)) {
+			this.input = document.getElementById(this.id).innerHTML
+				.replace(/^\s*<!\[CDATA\[\r?\n?|\r?\n?\]\]>\s*$/g, MT);
+			return compile_fn.call(this, next);
+		}
+
+		// get input from url
+		if (browser) {
+			// TODO: xhr input from id
+			return this;
+		}
+
+		// read input from file
+		var template = this;
+		fs.stat(template.id, function(err, stat) {
+			if (err) { template.dispatchEvent(ERROR, err); return; }
+
+			template.stat = stat;
+			return fs.readFile(template.id, UTF8, function(err, input) {
+				if (err) { template.dispatchEvent(ERROR, err); return; }
+
+				// save input from file and compile
+				template.input = input;
+				return compile_fn.call(template, next);
+			});
+		});
+
 		return this;
 	}
 	Template.prototype.compile = compile;
@@ -263,10 +309,11 @@
 	 * @type Template
 	 **/
 	function getTemplateById(id, settings) {
-		// populate template object, strip surrounding CDATA
-		var template = new Template(settings);
-		template.input = document.getElementById(id).innerHTML
-			.replace(/^\s*<!\[CDATA\[\r?\n?|\r?\n?\]\]>\s*$/g, MT);
+		var template   = new Template(settings);
+		template.id    = id;
+		template.input = MT;
+		template.stat  = null;
+
 		return template;
 	}
 	Template.getTemplateById = getTemplateById;
@@ -352,8 +399,8 @@
 	Output.prototype.pause = pause;
 
 
-	// attach to namespace or exports (in IE this.window === window is false)
-	if (this.window && this.window == window) { window.Template = Template; }
+	// attach to namespace or exports
+	if (browser) { window.Template = Template; }
 	else { exports.Template = Template; }
 	return Template;
 })();
