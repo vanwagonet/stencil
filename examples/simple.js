@@ -6,20 +6,17 @@ var http = require('http'),
 	Template = require('../src/Template').Template;
 
 
-/**
- * Parse, execute, and send the requested file
+/** Parse, execute, and send the requested file
  * @param {http.ServerRequest} request The request to handle
  * @param {http.ServerResponse} response The response to write to
- * @return The template used to respond to the request
- * @type Template
- **/
+ * @return {Template} The template used to respond to the request **/
 http.createServer(function handleRequest(request, response) {
 	var started = false;
 
 	var url = Url.parse(request.url, true),
 		filename = Path.join(process.cwd(), url.pathname.replace(/\.\.+/g, '.'));
 
-	var template = Template.getTemplateById(filename, {
+	return (new Template({ id:filename })).exec(url.query || {}, {
 		onerror:  function(err) {
 			if (!started) { // send error response if no response yet sent
 				var code = (err.errno === process.ENOENT) ? 404 : 500;
@@ -44,7 +41,5 @@ http.createServer(function handleRequest(request, response) {
 			sys.log('Complete: ' + request.url);
 		}
 	});
-
-	return template.exec(url.query || {});
 }).listen(8000);
 

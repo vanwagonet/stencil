@@ -16,7 +16,7 @@
 
 		NEST_START  = 'output.include(', NEST_CONT = '\n,data,output.pause(function(){',
 		ASYNC_START = '(function(){',   ASYNC_CONT = '\n})(output.pause(function(){',
-		ASYNC_DONE  = '}))',              CALL_END = "template.dispatchEvent('end')",
+		ASYNC_DONE  = '}))',              CALL_END = "output.dispatchEvent('end')",
 
 		// find & properly encode quotes & newlines
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED = "$1\\'",

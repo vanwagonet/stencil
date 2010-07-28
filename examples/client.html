@@ -14,7 +14,7 @@
 			<? var k = 0; // this comment will end with the end hook. ?>
 			<table>
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
-				<tr class="<?= k % 2 ? 'odd' : 'even' ?>">
+				<tr class="<?= k % 2 ? 'odd' : 'even' // comments should be fine in any code tag ?>">
 					<th><?= k ?></th>
 					<td>This is the <?= k, (k % 100 > 10 && k % 100 < 20) ? 'th' : data.suffix[Math.min(k % 10, 4)] ?> row.</td>
 				</tr>
@@ -59,30 +59,31 @@ unbroken by newline.
 			output = function(){};
 		}
 
-		// initialize the template, getting the content from the script tag
-		var template = Template.getTemplateById('template', {
-			ondata: ondata,
-			onend: function() {
-				done = (new Date()).getTime();
-				// make sure exec timing is done
-				if (exec) { output(); }
-			}
-		});
+		// initialize the template
+		var template = new Template({ id:'template' });
 		init = (new Date()).getTime();
 
 		// compile the template
-		template.compile();
-		cmpl = (new Date()).getTime();
+		template.compile(function(){
+			cmpl = (new Date()).getTime();
+			
+			// execute the template
+			template.exec({
+				suffix:[ 'th', 'st', 'nd', 'rd', 'th' ],
+				msg:'Message in nested template'
+			}, {
+				ondata:ondata,
+				onend:function() {
+					done = (new Date()).getTime();
+					// make sure exec timing is done
+					if (exec) { output(); }
+				}
+			});
+			exec = (new Date()).getTime();
 
-		// execute the template
-		template.exec({
-			suffix: ['th', 'st', 'nd', 'rd', 'th'],
-			msg: 'Message in nested template'
+			// make sure complete timing is done
+			if (done) { output(); }
 		});
-		exec = (new Date()).getTime();
-
-		// make sure complete timing is done
-		if (done) { output(); }
 	</script>
 </body>
 </html>

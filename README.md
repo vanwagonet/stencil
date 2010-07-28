@@ -2,7 +2,7 @@
 
 stencil is a templating engine designed by Andy VanWagoner
 ([thetalecrafter](http://github.com/thetalecrafter))
-to enable templates to run in an environment with asynchrounous I/O,
+to enable templates to run in an environment with asynchronous I/O,
 such as [node](http://nodejs.org).
 
 ## Features
@@ -10,11 +10,8 @@ such as [node](http://nodejs.org).
   * Async nested templates.
   * Async tag to ensure template is processed sequentially.
 
-## API Documentation
 
-Read api documentation online at [github](http://thetalecrafter.github.com/stencil/docs/).
-
-## Usage
+## Usage - template code
 
 Templates are specified using php/asp syntax, with code inside special tags.
 By default the tags are php-style:
@@ -23,17 +20,17 @@ By default the tags are php-style:
 
 There are also suffixes to the opening tag for ouput, include, and async blocks.
 
-	<?= 'Today is ' + (new Date()) /* result included in output */ ?>
-	<?= 'hello', ' ', 'world' /* multiple results can be output */ ?>
+	<?= 'Today is ' + (new Date()) // result included in output ?>
+	<?= 'hello', ' ', 'world' // multiple results can be output ?>
 	
-	<?# 'child-template-id' /* result passed as id to include() */ ?>
-	<?# 'child', { custom: 'data' } /* a separate data object in child */ ?>
+	<?# 'child-template-id' // result passed as id to include() ?>
+	<?# 'child', { custom: 'data' } // a separate data object in child ?>
 	
-	<?! setTimeout(resume, 1000); /* functionally equivalent to php's usleep(1000) */ ?>
+	<?! setTimeout(output.resume, 1000); // functionally equivalent to php usleep(1000) ?>
 	<?! someAsyncFunction(param1, function whendone(result) {
 			// do stuff with result
-			template.echo(result);
-			resume(); // continue processing the rest of the template
+			output.echo(result);
+			output.resume(); // continue processing the rest of the template
 		}); ?>
 
 Some notes to remember:
@@ -44,7 +41,27 @@ the parent template's data object is passed to the child template.
 3. Otherwise the second expression in the include tag will be passed to the child template as data.
 4. Additional expressions in the include tag will be ignored.
 5. Unlike regular code tags, async tags cannot not include partial statements.
-All of the code will be wrapped into a single function.
+All of the code inside will be wrapped into a function.
+All of the code following will also be wrapped into a function.
+
+This would not work:
+
+	<! if (true) { ?>some output<? } ?>
+
+Since compiled it would be similar to:
+
+	(function(){ if (true) { })(function() { output.echo('some output'); } });
+
+
+## Usage - client side
+
+	<script src="Template.js"></script>
+	<script type="text/template" id="dom_id">
+		<[CDATA[
+		... template code here ...
+		]]>
+	</script>
+	<script>(new Template({ id:'dom_id' })</script>
 
 
 ## Major TODOs
@@ -52,6 +69,7 @@ All of the code will be wrapped into a single function.
   * More detailed examples
   * Determine api direction (Hopefully with community input)
   * Write test cases
+
 
 ## License 
 
