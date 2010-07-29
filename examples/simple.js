@@ -25,15 +25,15 @@ http.createServer(function handleRequest(request, response) {
 			}
 			sys.log(err);
 		},
-		onexec: function() {
-			started = true;
-			response.writeHead(200, {
-			//	'Content-Type':      getMime(filename),
-				'Last-Modified':     this.stat.mtime.toUTCString(),
-				'Transfer-Encoding': 'chunked'
-			});
-		},
 		ondata: function(data) {
+			if (!started) {
+				started = true;
+				response.writeHead(200, {
+				//	'Content-Type':      getMime(filename),
+					'Last-Modified':     this.template.stat.mtime.toUTCString(),
+					'Transfer-Encoding': 'chunked'
+				});
+			}
 			response.write(data, 'utf-8');
 		},
 		onend: function() {

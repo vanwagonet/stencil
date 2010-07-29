@@ -47,6 +47,7 @@
 		nest:  '#',  /** Suffix for including the template identified by the result of the expression */
 		async: '!',  /** Suffix for async blocks, after which any execution is paused, and only resumed by calling output.resume() */
 
+		error:    null, /** An error that occurred when compiling */
 		compiled: null, /** The function compiled from the template text */
 		toString: function toString() { return this.input; } /** Returns string representation of the template */
 	};
@@ -118,7 +119,7 @@
 
 		// compile and cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
-		if (next) { next.call(this); }
+		if (next) { next.call(this, null, this.compiled); }
 		return this;
 	}
 
@@ -146,10 +147,10 @@
 		// read input from file
 		var template = this;
 		fs.stat(template.id, function(err, stat) {
-			if (err) { template.dispatchEvent(ERROR, err); return; }
+			if (err) { if (next) { next.call(this, err); } return; }
 			template.stat = stat;
 			return fs.readFile(template.id, UTF8, function(err, input) {
-				if (err) { template.dispatchEvent(ERROR, err); return; }
+				if (err) { if (next) { next.call(this, err); } return; }
 				template.input = input;
 				return compile_fn.call(template, next);
 			});
@@ -165,8 +166,9 @@
 	 * @return {Template} this **/
 	function exec(data, handle) {
 		data = data || {}; // must be an object
-		return this.compile(function process() {
-			this.compiled(this, new Output(this, handle), data);
+		return this.compile(function process(err, fn) {
+			var out = new Output(this, handle);
+			return fn ? fn(this, out, data) : out.dispatchEvent(ERROR, err);
 		});
 	} Template.prototype.exec = exec;
 
