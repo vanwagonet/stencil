@@ -3,12 +3,22 @@
 stencil is a templating engine designed by Andy VanWagoner
 ([thetalecrafter](http://github.com/thetalecrafter))
 to enable templates to run in an environment with asynchronous I/O,
-such as [node](http://nodejs.org).
+such as [node](http://nodejs.org), as well as in the browser.
 
 ## Features
 
-  * Async nested templates.
-  * Async tag to ensure template is processed sequentially.
+  * Async nested templates
+  * Async tag to ensure template is processed sequentially
+  * Use the same template code both server and client side
+
+
+## Shared templates
+
+The motivator for stencil was to share templates between server and client code.
+The template can be used server side to generate a widget in the initial page load,
+and then the template can be included on the page to update the widget.
+
+The code to generate and update a widget can be the same file.
 
 
 ## Usage - template code
@@ -32,6 +42,21 @@ There are also suffixes to the opening tag for ouput, include, and async blocks.
 			output.echo(result);
 			output.resume(); // continue processing the rest of the template
 		}); ?>
+		
+Members of the data object passed to exec are in the scope of the template code:
+
+	<script type="text/template" id="template"><[CDATA[
+		Why I don't teach English anymore:
+		<?= message ?>.
+	]]></script>
+	<script>
+		(new Template({ id:'template' })).exec({
+			message: 'The book is not on the table'
+		}, function(err, result) {
+			if (err) { console.log('it didn\'t work'); return; }
+			document.body.innerHTML += result;
+		});
+	</script>
 
 Some notes to remember:
 
@@ -46,7 +71,7 @@ All of the code following will also be wrapped into a function.
 
 This would not work:
 
-	<! if (true) { ?>some output<? } ?>
+	<?! if (true) { ?>some output<? } ?>
 
 Since compiled it would be similar to:
 
@@ -61,7 +86,61 @@ Since compiled it would be similar to:
 		... template code here ...
 		]]>
 	</script>
-	<script>(new Template({ id:'dom_id' })</script>
+	<script>
+		(new Template({ id:'dom_id' }).exec({ data:object }, {
+			onerror:function(err) { /* you broke it */ }
+			ondata:function(data) { /* use the data chunks */ }
+			onend:function() { /* all done */ }
+		});
+
+		// or
+
+		(new Template({ id:'dom_id' }).exec({ data:object }, function(err, result) {
+			/* all done */ 
+			if (err) { /* you broke it */ return; }
+			/* use the result */
+		});
+	</script>
+
+
+## Usage - server side
+
+	var Template = require('./Template').Template;
+
+	(new Template({ id:'/path/to/template' }).exec({ data:object }, {
+		onerror:function(err) { /* you broke it */ }
+		ondata:function(data) { /* use the data chunks */ }
+		onend:function() { /* all done */ }
+	});
+
+	// or
+
+	(new Template({ id:'/path/to/template' }).exec({ data:object }, function(err, result) {
+		/* all done */ 
+		if (err) { /* you broke it */ return; }
+		/* use the result */
+	});
+
+
+## Usage - custom tags
+
+	// set for all templates
+	// Template.prototype.start = ...
+
+	// set on a particular template
+	var t = new Template({ id:id });
+	t.start = '`';
+	t.stop  = '`';
+	t.echo  = 'print';
+	t.nest  = ' include this template:';
+	t.async = '@';
+
+	// template code:
+	My pet is `if (hungry) { `hungry` } else { `sleepy` }`.
+	His name is: `print pet.name`.
+	He looks like: ` include this template: 'looks_like', pet `.
+	`@my_async_function(function(result) { output.echo(result); output.resume(); });`
+	the end.
 
 
 ## Major TODOs

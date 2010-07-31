@@ -16,7 +16,7 @@
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
 				<tr class="<?= k % 2 ? 'odd' : 'even' // comments should be fine in any code tag ?>">
 					<th><?= k ?></th>
-					<td>This is the <?= k, (k % 100 > 10 && k % 100 < 20) ? 'th' : data.suffix[Math.min(k % 10, 4)] ?> row.</td>
+					<td>This is the <?= k, (k % 100 > 10 && k % 100 < 20) ? 'th' : suffix[Math.min(k % 10, 4)] ?> row.</td>
 				</tr>
 			<? } ?>
 			</table>
@@ -29,7 +29,7 @@ unbroken by newline.
 	]]>
 	</script>
 	<script id="nested" type="text/template">
-		<![CDATA[<div><?= data.msg ?></div>]]>
+		<![CDATA[<div><?= msg ?></div>]]>
 	</script>
 	<script>
 		var out = document.getElementById('out'), // output div

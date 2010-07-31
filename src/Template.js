@@ -1,4 +1,4 @@
-/*! Stencil Template v0.3
+/*! Stencil Template v0.4
  *  Async templating for JavaScript
  * Copyright(c) 2010 Andy VanWagoner
  * MIT licensed **/
@@ -21,6 +21,9 @@
 		// find & properly encode quotes & newlines
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED = "$1\\'",
 		NEWLINE_RE  = /(\r?\n)/g, NEWLINE_ESCAPED = '\\n',
+
+		// make data members "global"
+		CONTEXT_START = 'with(data){', CONTEXT_END = '}',
 
 		// assume CommonJS if the global is not a window
 		browser = this.window && this.window == window, // in IE this.window === window is false
@@ -56,7 +59,7 @@
 	/** @private input to function conversion */
 	function compile_fn(next) {
 		var s, i = 0, n = 0, // start, end, nested template count
-			fn    = MT, // resulting script
+			fn    = CONTEXT_START, // resulting script
 			src   = this.input, // cache vars used in loop
 			start = this.start, startl = start.length,
 			stopt = this.stop,  stopl  = stopt.length,
@@ -117,9 +120,11 @@
 		// close async template callbacks
 		while (n--) { fn += ASYNC_DONE; }
 
+		fn += CONTEXT_END;
+
 		// compile and cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
-		if (next) { next.call(this, null, this.compiled); }
+		if (next) { next.call(this); }
 		return this;
 	}
 
@@ -162,12 +167,12 @@
 
 	/** Process the template given a data context
 	 * @param {Object} data The data context for the template
-	 * @param {Object} handle All the event handlers for the output process
+	 * @param {Object|Function} handle All the event handlers for the output process
 	 * @return {Template} this **/
 	function exec(data, handle) {
 		data = data || {}; // must be an object
-		return this.compile(function process(err, fn) {
-			var out = new Output(this, handle);
+		return this.compile(function process(err) {
+			var out = new Output(this, handle), fn = this.compiled;
 			return fn ? fn(this, out, data) : out.dispatchEvent(ERROR, err);
 		});
 	} Template.prototype.exec = exec;
@@ -175,7 +180,7 @@
 
 	/** Sets up template properties
 	 * @param {Template} template The template the output comes from
-	 * @param {Object} handle All the event handlers for the output process **/
+	 * @param {Object|Function} handle All the event handlers for the output process **/
 	function Output(template, handle) {
 		this.template = template;
 
@@ -193,6 +198,14 @@
 			else { handlers[i] = []; }
 		}
 		this.handlers = handlers;
+
+		// allow handle to be function(error, output)
+		if (typeof handle === fn) {
+			var buffer = [], b_len = 0;
+			handlers.error.push(fn);
+			handlers.data.push(function(data) { buffer[b_len++] = data; });
+			handlers.end.push(function() { fn.call(this, null, buffer.join(MT)); });
+		}
 	}
 
 	(Template.Output = Output).prototype = {

@@ -1,6 +1,6 @@
 <?! setTimeout(output.resume, 5000); ?>
 {
 	"hello":"world",
-	"clicked":<?= data.t ?>,
-	"responded":<?= Date.now() - data.t ?>
+	"clicked":<?= t ?>,
+	"responded":<?= Date.now() - t ?>
 }
