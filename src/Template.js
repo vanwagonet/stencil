@@ -86,6 +86,8 @@
 	Template.prototype.async = '!';
 	/** The function compiled from the template text */
 	Template.prototype.compiled = null;
+	/** The constructor of the template */
+	Template.prototype.self = Template;
 
 	/** @private used internally to store event handlers */
 	Template.prototype.handlers = { compiled: [], end: [], exec: [], error: [], data: [] };
@@ -149,11 +151,16 @@
 	 * Turn input into executable JavaScript
 	 * @methodOf Template.prototype
 	 * @param {Boolean} use_cached If true, prevents the template from recompiling
+	 * @param {Function} next Called when the code is ready to execute
 	 * @return this (the new code is in this.compiled)
 	 * @type Template
 	 **/
-	function compile(use_cached) {
-		if (use_cached && this.compiled) { return this; }
+	function compile(use_cached, next) {
+		// already compiled
+		if (use_cached && this.compiled) {
+			if (next) { next.call(this); }
+			return this;
+		}
 
 		var s, i = 0, n = 0, // start, end, nested template count
 			fn    = MT, // resulting script
@@ -222,6 +229,7 @@
 		this.compiled = new Function(PARAMS, fn);
 		console.log(fn);
 		this.dispatchEvent('compiled');
+		if (next) { next.call(this); }
 		return this;
 	}
 	Template.prototype.compile = compile;
@@ -236,13 +244,12 @@
 	 * @type Template
 	 **/
 	function exec(data) {
-		var template = this;
 		data = data || {}; // must be an object
-		this.compile(true); // compile if necessary
-
-		// process result
-		this.dispatchEvent('exec');
-		this.compiled(this, new Output(this), data);
+		this.compile(true, function process() {
+			// process result
+			this.dispatchEvent('exec');
+			this.compiled(this, new Output(this), data);
+		});
 		return this;
 	}
 	Template.prototype.exec = exec;
@@ -317,9 +324,14 @@
 	 * @type Template.Output
 	 **/
 	function include(id, data) {
-		var tmpl = this.template, child = Template.getTemplateById(id, tmpl);
+		var out = this, tmpl = this.template,
+			child = tmpl.self.getTemplateById(id, tmpl);
 		child.addEventListener(DATA, function(data) {
 			tmpl.dispatchEvent(DATA, data);
+		});
+		child.addEventListener('error', function(err) {
+			tmpl.dispatchEvent('error', err);
+			out.resume(); // continue processing parent
 		});
 		child.addEventListener('end', this.resume);
 		child.exec(data);

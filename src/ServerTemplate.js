@@ -14,7 +14,7 @@ var Template = require('./Template').Template,
 
 	DEFAULT_PATH = '/index.html',
 
-	MT = '', UTF8 = 'utf-8', COMPLETE = 'complete', ERROR = 'error',
+	MT = '', UTF8 = 'utf-8', COMPLETE = 'end', ERROR = 'error',
 	join = Array.prototype.join, slice = Array.prototype.slice;
 
 
@@ -35,8 +35,6 @@ function ServerTemplate(o) {
 	o = o || {}; // must be an object
 	this.path     = o.path     || this.path;
 	this.stat     = o.stat     || this.stat;
-	this.request  = o.request  || this.request;
-	this.response = o.response || this.response;
 
 	return this;
 }
@@ -52,10 +50,8 @@ ServerTemplate.prototype          = new Template();
 ServerTemplate.prototype.path     = DEFAULT_PATH;
 /** The stat object populated when the template file is loaded */
 ServerTemplate.prototype.stat     = null;
-/** The http request asking for this template */
-ServerTemplate.prototype.request  = null;
-/** The http response the template will output to */
-ServerTemplate.prototype.response = null;
+/** The constructor of the template */
+ServerTemplate.prototype.self     = ServerTemplate;
 
 
 /**
@@ -75,8 +71,7 @@ function compile(use_cached, next) {
 
 	// already has template input
 	if (this.input) {
-		Template.prototype.compile.call(t);
-		if (next) { next.call(this); }
+		Template.prototype.compile.call(this, use_cached, next);
 		return this;
 	}
 
@@ -93,71 +88,13 @@ function compile(use_cached, next) {
 
 			// save input from file and compile
 			template.input = input;
-			Template.prototype.compile.call(template);
-			if (next) { next.call(template); }
+			Template.prototype.compile.call(template, use_cached, next);
 		});
 	});
 
 	return this;
 }
 ServerTemplate.prototype.compile = compile;
-
-
-/**
- * Process the template given a data context
- * @methodOf ServerTemplate.prototype
- * @param {Object} data The data context for the template
- *  data will be in scope in the template
- * @return this
- * @type ServerTemplate
- **/
-function exec(data) {
-	data = data || {}; // must be an object
-	this.compile(true, function() {
-		// process result
-		this.dispatchEvent('exec');
-		return this.compiled.call(this, data);
-	});
-	return this;
-}
-ServerTemplate.prototype.exec = exec;
-
-
-/**
- * Appends all the arguments to the template output
- * @methodOf ServerTemplate.prototype
- * @return this
- * @type ServerTemplate
- **/
-function echo() {
-	this.response.write(join.call(arguments, MT), UTF8);
-	return this;
-}
-ServerTemplate.prototype.echo = echo;
-
-
-/**
- * Execute the child template and append its output
- * @methodOf ServerTemplate.prototype
- * @param {String} id The identifier for the nested template
- * @param {Object} data The data context for the nest template
- * @param {Function} next The continuation after the nested template
- * @return this
- * @type ServerTemplate
- **/
-function include(id, data, next) {
-	var parent = this, child = ServerTemplate.getTemplateByFilename(id, parent);
-	child.addEventListener(ERROR, function(err) {
-		parent.dispatchEvent(ERROR, err);
-		// continue processing parent
-		return next.call(parent, data);
-	}).addEventListener(COMPLETE, function() {
-		return next.call(parent, data);
-	});
-
-	child.exec(data);
-}
-ServerTemplate.prototype.include = include;
 
 
 /**
@@ -168,7 +105,7 @@ ServerTemplate.prototype.include = include;
  * @return The template created from the file's content
  * @type ServerTemplate
  **/
-function getTemplateByFilename(id, settings) {
+function getTemplateById(id, settings) {
 	if (id[id.length - 1] === '/') { id += DEFAULT_PATH; }
 
 	// populate template object
@@ -178,7 +115,7 @@ function getTemplateByFilename(id, settings) {
 
 	return template;
 }
-ServerTemplate.getTemplateByFilename = getTemplateByFilename;
+ServerTemplate.getTemplateById = getTemplateById;
 
 
 /**
@@ -194,27 +131,28 @@ function handleRequest(request, response) {
 
 	var url = Url.parse(request.url, true);
 
-	var template = ServerTemplate.getTemplateByFilename(url.pathname, {
-		request:  request,
-		response: response,
+	var template = ServerTemplate.getTemplateById(url.pathname, {
 		onerror:  function(err) {
 			if (!started) { // send error response if no response yet sent
 				var code = (err.errno === process.ENOENT) ? 404 : 500;
-				this.response.writeHead(code, { 'Content-Type': 'text/plain' });
-				this.response.end();
+				response.writeHead(code, { 'Content-Type': 'text/plain' });
+				response.end();
 			}
 			sys.log(err);
 		},
 		onexec: function() {
 			started = true;
-			this.response.writeHead(200, {
+			response.writeHead(200, {
 			//	'Content-Type':      getMime(filename),
 				'Last-Modified':     this.stat.mtime.toUTCString(),
 				'Transfer-Encoding': 'chunked'
 			});
 		},
+		ondata: function(data) {
+			response.write(data, UTF8);
+		},
 		oncomplete: function() {
-			this.response.end();
+			response.end();
 			sys.log('Complete: ' + request.url);
 		}
 	});
