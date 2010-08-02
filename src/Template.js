@@ -9,23 +9,24 @@
 	var MT    = '',     NL   = '\n',      CR   = '\r',
 		ECHO  = 'echo', NEST = 'include', DATA = 'data',
 
-		PARAMS = DATA + ',template',
+		TEMPLATE = 'template', OUTPUT = 'output',
+		PARAMS   = [ TEMPLATE, OUTPUT, DATA ].join(),
 
-		ECHO_START  = 'this.' + ECHO + '(', ECHO_DONE = ');',
-		STAT_START  = ECHO_START + "'",     STAT_DONE = "');",
+		ECHO_START  = 'output.echo(',   ECHO_DONE = '\n);',
+		STAT_START  = ECHO_START + "'", STAT_DONE = "');",
 
-		ASYNC_START = '(function(resume){',
-		ASYNC_CONT  = '})(this.bind(function(' + PARAMS + '){',
-		ASYNC_DONE  = '},this,[' + PARAMS + ']))',
+		ASYNC_START = '(function(){',
+		ASYNC_CONT  = '\n})(output.pause(function(){',
+		ASYNC_DONE  = '}))',
 
-		NEST_START  = 'this.' + NEST + '(',
-		NEST_CONT   = ',data,this.bind(function(' + PARAMS + '){',
+		NEST_START  = 'output.include(',
+		NEST_CONT   = '\n,data,output.pause(function(){',
 
 		// find & properly encode quotes & newlines
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED   = "$1\\'",
 		NEWLINE_RE  = /(\r?\n)/g,   NEWLINE_ESCAPED = '\\\n',
 
-		CALL_DONE   = "this.dispatchEvent('complete')";
+		CALL_DONE   = "template.dispatchEvent('end')";
 
 
 	/**
@@ -41,7 +42,7 @@
 		this.input = o.input || this.input;
 		this.start = o.start || this.start;
 		this.stop  = o.stop  || this.stop;
-		this.send  = o.send  || this.send;
+		this.echo  = o.echo  || this.echo;
 		this.nest  = o.nest  || this.nest;
 		this.async = o.async || this.async;
 
@@ -54,7 +55,7 @@
 		for (var i in events) {
 			value = o['on' + i];
 			if (typeof(value) === fn) { handlers[i] = [ value ]; }
-			else if (toString(value) === ar) { handlers[i] = value; }
+			else if (value && toString(value) === ar) { handlers[i] = value; }
 			else { handlers[i] = []; }
 		}
 		this.handlers = handlers;
@@ -76,7 +77,7 @@
 	/** The code stop tag in the template */
 	Template.prototype.stop = '?>';
 	/** The tag suffix for echoing result of the expression */
-	Template.prototype.send = '=';
+	Template.prototype.echo = '=';
 	/** The tag suffix for including the template identified
 	 *  by the result of the expression */
 	Template.prototype.nest = '#';
@@ -85,11 +86,12 @@
 	Template.prototype.async = '!';
 	/** The function compiled from the template text */
 	Template.prototype.compiled = null;
-	/** The resulting output from executing the template */
-	Template.prototype.output = null;
 
-	// used internally to store event handlers
-	Template.prototype.handlers = { compiled: [], complete: [], exec: [], error: [] };
+	/** @private used internally to store event handlers */
+	Template.prototype.handlers = { compiled: [], end: [], exec: [], error: [], data: [] };
+	
+	/** Returns input, which is the string representation of the template */
+	Template.prototype.toString = function toString() { return this.input; };
 
 
 	/**
@@ -157,8 +159,8 @@
 			fn    = MT, // resulting script
 			src   = this.input, // cache vars used in loop
 			start = this.start, startl = start.length,
-			stop  = this.stop,  stopl  = stop.length,
-			send  = this.send,  sendl  = send.length,
+			stopt = this.stop,  stopl  = stopt.length,
+			echot = this.echo,  echol  = echot.length,
 			nest  = this.nest,  nestl  = nest.length,
 			async = this.async, asyncl = async.length;
 
@@ -178,27 +180,27 @@
 
 			// wrap javascript chunk
 			s = (i += startl);
-			if (src.substr(s, sendl) === send) {
+			if (src.substr(s, echol) === echot) {
 				// echo chunk
-				s  += sendl; i = src.indexOf(stop, s);
+				s  += echol; i = src.indexOf(stopt, s);
 				fn += ECHO_START;
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += ECHO_DONE;
 			} else if (src.substr(s, nestl) === nest) {
 				// nest template chunk
-				s  += nestl; i = src.indexOf(stop, s); ++n;
+				s  += nestl; i = src.indexOf(stopt, s); ++n;
 				fn += NEST_START;
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += NEST_CONT;
 			} else if (src.substr(s, asyncl) === async) {
 				// async funciton call chunk
-				s  += asyncl; i = src.indexOf(stop, s); ++n;
+				s  += asyncl; i = src.indexOf(stopt, s); ++n;
 				fn += ASYNC_START;
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += ASYNC_CONT;
 			} else {
 				// regular code chunk
-				i   = src.indexOf(stop, s);
+				i   = src.indexOf(stopt, s);
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += NL;
 			}
@@ -218,6 +220,7 @@
 
 		// compile & cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
+		console.log(fn);
 		this.dispatchEvent('compiled');
 		return this;
 	}
@@ -233,70 +236,16 @@
 	 * @type Template
 	 **/
 	function exec(data) {
+		var template = this;
 		data = data || {}; // must be an object
 		this.compile(true); // compile if necessary
 
 		// process result
-		this.output = MT;
 		this.dispatchEvent('exec');
-		this.compiled.call(this, data);
+		this.compiled(this, new Output(this), data);
 		return this;
 	}
 	Template.prototype.exec = exec;
-
-
-	/**
-	 * Appends all the arguments to the template output
-	 * @methodOf Template.prototype
-	 * @return this
-	 * @type Template
-	 **/
-	function echo() {
-		this.output += Array.prototype.join.call(arguments, MT);
-		return this;
-	}
-	Template.prototype.echo = echo;
-
-
-	/**
-	 * Execute the child template and append its output
-	 * @methodOf Template.prototype
-	 * @param {String} id The identifier for the nested template
-	 * @param {Object} data The data context for the nest template
-	 * @param {Function} next The continuation after the nested template
-	 * @return this
-	 * @type Template
-	 **/
-	function include(id, data, next) {
-		// if more args are passed in, the last is the continuation
-		// this can happen if the user passes in custom data for the child
-		if (arguments.length > 3) { next = arguments[arguments.length - 1]; }
-
-		var parent = this, child = Template.getTemplateById(id, parent);
-		child.addEventListener('complete', function() {
-			parent.output += child.output;
-			next.call(parent, data);
-		});
-		child.exec(data);
-		return this;
-	}
-	Template.prototype.include = include;
-
-
-	/**
-	 * Create a callback with the correct context
-	 *  Used internally for async tags
-	 * @methodOf Template.prototype
-	 * @param {Function} fn The function to wrap
-	 * @param {Object} scope The 'this' to use inside fn
-	 * @param {Arguments} args The arguments passed to fn when called
-	 * @return The function wrapped with the scope and arguments
-	 * @type Function
-	 **/
-	function bind(fn, scope, args) {
-		return function() { return fn.apply(scope, args); };
-	}
-	Template.prototype.bind = bind;
 
 
 	/**
@@ -315,6 +264,81 @@
 		return template;
 	}
 	Template.getTemplateById = getTemplateById;
+
+
+	/**
+	 * Template.Output constructor
+	 *  Sets up template properties
+	 * @constructor
+	 * @param {Template} template The template the output comes from
+	 **/
+	function Output(template) { this.template = template; }
+	Template.Output = Output;
+
+
+	/**
+	 * Template prototype
+	 *  Sets up defaults for properties and attaches public methods
+	 *  Defaults can be changed by updating the prototype
+	 **/
+	Output.prototype = {};
+	/** The template the output belongs to */
+	Output.prototype.template = null;
+
+
+	/**
+	 * Continue template execution
+	 * @methodOf Template.Output.prototype
+	 **/
+	function resume() {}
+	Output.prototype.resume = resume;
+
+
+	/**
+	 * Appends all the arguments to the Output
+	 * @methodOf Template.Output.prototype
+	 * @return this
+	 * @type Template.Output
+	 **/
+	function echo() {
+		var data = Array.prototype.join.call(arguments, MT);
+		if (data) { this.template.dispatchEvent(DATA, data); }
+		return this;
+	}
+	Output.prototype.echo = echo;
+
+
+	/**
+	 * Execute the child template and append its output
+	 * @methodOf Template.Output.prototype
+	 * @param {String} id The identifier for the nested template
+	 * @param {Object} data The data context for the nest template
+	 * @return this
+	 * @type Template.Output
+	 **/
+	function include(id, data) {
+		var tmpl = this.template, child = Template.getTemplateById(id, tmpl);
+		child.addEventListener(DATA, function(data) {
+			tmpl.dispatchEvent(DATA, data);
+		});
+		child.addEventListener('end', this.resume);
+		child.exec(data);
+		return this;
+	}
+	Output.prototype.include = include;
+
+
+	/**
+	 * Pause execution and bind the continuation to resume
+	 * @methodOf Template.Output.prototype
+	 * @param {Function} fn The template continuation
+	 **/
+	function pause(fn) {
+		var out = this;
+		out.resume = function resume() { fn(); out.resume = resume; };
+		return;
+	}
+	Output.prototype.pause = pause;
 
 
 	// attach to namespace or exports (in IE this.window === window is false)

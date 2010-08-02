@@ -36,10 +36,13 @@ unbroken by newline.
 			done, init, cmpl, exec, wait, end, // timing vars
 			start = (new Date()).getTime();
 
+		var str = '';
+		function ondata(data) { str += data; }
+
 		function output() {
 			// output onto the page
 			wait = (new Date()).getTime();
-			out.innerHTML += template.output;
+			out.innerHTML += str;
 			end  = (new Date()).getTime();
 
 			// preped timing information
@@ -58,7 +61,8 @@ unbroken by newline.
 
 		// initialize the template, getting the content from the script tag
 		var template = Template.getTemplateById('template', {
-			oncomplete: function() {
+			ondata: ondata,
+			onend: function() {
 				done = (new Date()).getTime();
 				// make sure exec timing is done
 				if (exec) { output(); }
