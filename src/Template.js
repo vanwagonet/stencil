@@ -1,4 +1,4 @@
-/*! Stencil Template v0.2
+/*! Stencil Template v0.3
  *  Async templating for JavaScript
  * Copyright(c) 2010 Andy VanWagoner
  * MIT licensed **/
@@ -31,31 +31,11 @@
 	 * @param {Object} o A hash of the settings to override **/
 	function Template(o) {
 		o = o || {};
-		// default to prototype values
+		this.id    = o.id    || this.id;
+		this.stat  = o.stat  || this.stat;
 		this.input = o.input || this.input;
-		this.start = o.start || this.start;
-		this.stop  = o.stop  || this.stop;
-		this.echo  = o.echo  || this.echo;
-		this.nest  = o.nest  || this.nest;
-		this.async = o.async || this.async;
-
-		// shortcuts for type detection
-		var toString = Object.prototype.toString,
-			ar = '[object Array]', fn = 'function';
-
-		// add any event handlers specified
-		var events = this.handlers, handlers = {}, value;
-		for (var i in events) {
-			value = o['on' + i];
-			if (typeof(value) === fn) { handlers[i] = [ value ]; }
-			else if (value && toString(value) === ar) { handlers[i] = value; }
-			else { handlers[i] = []; }
-		}
-		this.handlers = handlers;
-
 		return this;
 	}
-
 
 	Template.prototype = {
 		id:    null, /** Identifier for the template (filename, or dom id) */
@@ -68,45 +48,8 @@
 		async: '!',  /** Suffix for async blocks, after which any execution is paused, and only resumed by calling output.resume() */
 
 		compiled: null, /** The function compiled from the template text */
-		handlers: { compiled: [], end: [], exec: [], error: [], data: [] }, /** @private */
 		toString: function toString() { return this.input; } /** Returns string representation of the template */
 	};
-
-
-	/** Add a function to execute on an event
-	 * @param {String} event The name of the event the function handles
-	 * @param {Function} fn The handler to execute on the event
-	 * @return {Template} this **/
-	function addEventListener(event, fn) {
-		if (!this.handlers[event]) { return; }
-		this.handlers[event].push(fn);
-		return this;
-	} Template.prototype.addEventListener = addEventListener;
-
-
-	/** Remove a handler from firing on an event
-	 * @param {String} event The name of the event the function handles
-	 * @param {Function} fn The handler to remove from the event
-	 * @return {Template} this **/
-	function removeEventListener(event, fn) {
-		if (!this.handlers[event]) { return; }
-		var a = this.handlers[event], i = a.length;
-		while (i--) { if (a[i] === fn) { a = a.splice(i, 1); } }
-		this.handlers[event] = a;
-		return this;
-	} Template.prototype.removeEventListener = removeEventListener;
-
-
-	/** Execute all handlers for the specified event
-	 * @param {String} event The name of the event
-	 * @return {Template} this **/
-	function dispatchEvent(event) {
-		if (!this.handlers[event]) { return; }
-		var args = Array.prototype.slice.call(arguments, 1),
-			a = this.handlers[event], l = a.length;
-		for (var i = 0; i < l; ++i) { a[i].apply(this, args); }
-		return this;
-	} Template.prototype.dispatchEvent = dispatchEvent;
 
 
 	/** @private input to function conversion */
@@ -135,28 +78,27 @@
 			if (i < 0) { break; }
 
 			// wrap javascript chunk
-			s = (i += startl);
+			s = (i += startl); i = src.indexOf(stopt, s);
 			if (src.substr(s, echol) === echot) {
 				// echo chunk
-				s  += echol; i = src.indexOf(stopt, s);
+				s  += echol;
 				fn += ECHO_START;
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += ECHO_DONE;
 			} else if (src.substr(s, nestl) === nest) {
 				// nest template chunk
-				s  += nestl; i = src.indexOf(stopt, s); ++n;
+				s  += nestl; ++n;
 				fn += NEST_START;
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += NEST_CONT;
 			} else if (src.substr(s, asyncl) === async) {
 				// async funciton call chunk
-				s  += asyncl; i = src.indexOf(stopt, s); ++n;
+				s  += asyncl; ++n;
 				fn += ASYNC_START;
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += ASYNC_CONT;
 			} else {
 				// regular code chunk
-				i   = src.indexOf(stopt, s);
 				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
 				fn += NL;
 			}
@@ -176,7 +118,6 @@
 
 		// compile and cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
-		this.dispatchEvent('compiled', this.compiled);
 		if (next) { next.call(this); }
 		return this;
 	}
@@ -220,33 +161,42 @@
 
 	/** Process the template given a data context
 	 * @param {Object} data The data context for the template
+	 * @param {Object} handle All the event handlers for the output process
 	 * @return {Template} this **/
-	function exec(data) {
+	function exec(data, handle) {
 		data = data || {}; // must be an object
 		return this.compile(function process() {
-			this.dispatchEvent('exec');
-			this.compiled(this, new Output(this), data);
+			this.compiled(this, new Output(this, handle), data);
 		});
 	} Template.prototype.exec = exec;
 
 
-	/** Get a Template object from an identifier (dom id or filename)
-	 * @param {String} id The identifier for the template (dom id or filename)
-	 * @param {Object} settings A hash of Template settings (or Template object)
-	 * @return {Template} The template created from the id **/
-	function getTemplateById(id, settings) {
-		var template   = new Template(settings);
-		template.id    = id;
-		template.input = MT;
-		template.stat  = null;
-		return template;
-	} Template.getTemplateById = getTemplateById;
-
-
 	/** Sets up template properties
-	 * @param {Template} template The template the output comes from **/
-	function Output(template) { this.template = template; }
-	(Template.Output = Output).prototype = { template:null };
+	 * @param {Template} template The template the output comes from
+	 * @param {Object} handle All the event handlers for the output process **/
+	function Output(template, handle) {
+		this.template = template;
+
+		// shortcuts for type detection
+		var toString = Object.prototype.toString,
+			ar = '[object Array]', fn = 'function';
+
+		// add any event handlers specified
+		handle = handle || {};
+		var events = this.handlers, handlers = {}, value;
+		for (var i in events) {
+			value = handle['on' + i];
+			if (typeof(value) === fn) { handlers[i] = [ value ]; }
+			else if (value && toString(value) === ar) { handlers[i] = value; }
+			else { handlers[i] = []; }
+		}
+		this.handlers = handlers;
+	}
+
+	(Template.Output = Output).prototype = {
+		template:null,
+		handlers:{ data:[], end:[], error:[] } /** @private */
+	};
 
 
 	/** Continue template execution **/
@@ -257,7 +207,7 @@
 	 * @return {Template.Output} this **/
 	function echo() {
 		var data = Array.prototype.join.call(arguments, MT);
-		if (data) { this.template.dispatchEvent(DATA, data); }
+		if (data) { this.dispatchEvent(DATA, data); }
 		return this;
 	} Output.prototype.echo = echo;
 
@@ -267,17 +217,17 @@
 	 * @param {Object} data The data context for the nest template
 	 * @return {Template.Output} this **/
 	function include(id, data) {
-		var out = this, tmpl = this.template,
-			child = Template.getTemplateById(id, tmpl);
-		child.addEventListener(DATA, function(data) {
-			tmpl.dispatchEvent(DATA, data);
+		var out = this, child = new Template({ id:id });
+		return child.exec(data, {
+			ondata:function ondata(data)  {
+				out.dispatchEvent(DATA, data);
+			},
+			onerror:function onerror(err) {
+				out.dispatchEvent(ERROR, err);
+				out.resume(); // continue processing parent
+			},
+			onend:this.resume
 		});
-		child.addEventListener(ERROR, function(err) {
-			tmpl.dispatchEvent(ERROR, err);
-			out.resume(); // continue processing parent
-		});
-		child.addEventListener(END, this.resume);
-		return child.exec(data);
 	} Output.prototype.include = include;
 
 
@@ -288,6 +238,42 @@
 		out.resume = function resume() { fn(); out.resume = resume; };
 		return out;
 	} Output.prototype.pause = pause;
+
+
+	/** Add a function to execute on an event
+	 * @param {String} event The name of the event the function handles
+	 * @param {Function} fn The handler to execute on the event
+	 * @return {Template.Output} this **/
+	function addEventListener(event, fn) {
+		if (!this.handlers[event]) { return; }
+		this.handlers[event].push(fn);
+		return this;
+	} Output.prototype.addEventListener = addEventListener;
+
+
+	/** Remove a handler from firing on an event
+	 * @param {String} event The name of the event the function handles
+	 * @param {Function} fn The handler to remove from the event
+	 * @return {Template.Output} this **/
+	function removeEventListener(event, fn) {
+		if (!this.handlers[event]) { return; }
+		var a = this.handlers[event], i = a.length;
+		while (i--) { if (a[i] === fn) { a = a.splice(i, 1); } }
+		this.handlers[event] = a;
+		return this;
+	} Output.prototype.removeEventListener = removeEventListener;
+
+
+	/** Execute all handlers for the specified event
+	 * @param {String} event The name of the event
+	 * @return {Template.Output} this **/
+	function dispatchEvent(event) {
+		if (!this.handlers[event]) { return; }
+		var args = Array.prototype.slice.call(arguments, 1),
+			a = this.handlers[event], l = a.length;
+		for (var i = 0; i < l; ++i) { a[i].apply(this, args); }
+		return this;
+	} Output.prototype.dispatchEvent = dispatchEvent;
 
 
 	// attach to namespace or exports
