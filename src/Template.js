@@ -1,13 +1,12 @@
-/*!
- * Stencil Template v0.2
+/*! Stencil Template v0.2
  *  Async templating for JavaScript
  * Copyright(c) 2010 Andy VanWagoner
- * MIT licensed
- **/
+ * MIT licensed **/
 (function() {
 		// mortar between template chunks
-	var MT    = '',     NL   = '\n',      CR   = '\r',
-		ECHO  = 'echo', NEST = 'include', DATA = 'data',
+	var MT = '',  ERROR = 'error', NEST = 'include',
+		NL = '\n', DATA = 'data',  UTF8 = 'utf-8',
+		CR = '\r', ECHO = 'echo',   END = 'end',
 
 		TEMPLATE = 'template', OUTPUT = 'output',
 		PARAMS   = [ TEMPLATE, OUTPUT, DATA ].join(),
@@ -15,32 +14,21 @@
 		ECHO_START  = 'output.echo(',   ECHO_DONE = '\n);',
 		STAT_START  = ECHO_START + "'", STAT_DONE = "');",
 
-		ASYNC_START = '(function(){',
-		ASYNC_CONT  = '\n})(output.pause(function(){',
-		ASYNC_DONE  = '}))',
-
-		NEST_START  = 'output.include(',
-		NEST_CONT   = '\n,data,output.pause(function(){',
+		NEST_START  = 'output.include(', NEST_CONT = '\n,data,output.pause(function(){',
+		ASYNC_START = '(function(){',   ASYNC_CONT = '\n})(output.pause(function(){',
+		ASYNC_DONE  = '}))',              CALL_END = "template.dispatchEvent('end')",
 
 		// find & properly encode quotes & newlines
-		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED   = "$1\\'",
-		NEWLINE_RE  = /(\r?\n)/g,   NEWLINE_ESCAPED = '\\\n',
+		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED = "$1\\'",
+		NEWLINE_RE  = /(\r?\n)/g, NEWLINE_ESCAPED = '\\n',
 
-		CALL_DONE   = "template.dispatchEvent('end')",
-
-		// in IE this.window === window is false
-		browser     = this.window && this.window == window,
-		fs          = !browser && require('fs'),
-		UTF8 = 'utf-8', ERROR = 'error', DEFAULT_PATH = 'index.html';;
+		// assume CommonJS if the global is not a window
+		browser = this.window && this.window == window, // in IE this.window === window is false
+		fs      = !browser && require('fs');
 
 
-	/**
-	 * Template constructor
-	 *  Sets up template properties
-	 * @constructor
-	 * @version 0.1
-	 * @param {Object} o A hash of the settings to override
-	 **/
+	/** Sets up template properties
+	 * @param {Object} o A hash of the settings to override **/
 	function Template(o) {
 		o = o || {};
 		// default to prototype values
@@ -69,94 +57,59 @@
 	}
 
 
-	/**
-	 * Template prototype
-	 *  Sets up defaults for properties and attaches public methods
-	 *  Defaults can be changed by updating the prototype
-	 **/
-	Template.prototype = {};
-	/** The identifier for the template (filename, url, or dom id) */
-	Template.prototype.id       = null;
-	/** The stat object populated when the template file is loaded */
-	Template.prototype.stat     = null;
-	/** The template text to process */
-	Template.prototype.input    = MT;
-	/** The code start tag in the template */
-	Template.prototype.start    = '<?';
-	/** The code stop tag in the template */
-	Template.prototype.stop     = '?>';
-	/** The tag suffix for echoing result of the expression */
-	Template.prototype.echo     = '=';
-	/** The tag suffix for including the template identified
-	 *  by the result of the expression */
-	Template.prototype.nest     = '#';
-	/** The tag suffix for async blocks, after which
-	 *  any execution is paused, and only resumed by calling output.resume() */
-	Template.prototype.async    = '!';
-	/** The function compiled from the template text */
-	Template.prototype.compiled = null;
-	/** The constructor of the template */
-	Template.prototype.self     = Template;
+	Template.prototype = {
+		id:    null, /** Identifier for the template (filename, or dom id) */
+		stat:  null, /** Stat object populated when the template file is loaded */
+		input: MT,   /** Template text to process */
+		start: '<?', /** Start tag in the template */
+		stop:  '?>', /** Stop tag in the template */
+		echo:  '=',  /** Suffix for echoing result of the expression */
+		nest:  '#',  /** Suffix for including the template identified by the result of the expression */
+		async: '!',  /** Suffix for async blocks, after which any execution is paused, and only resumed by calling output.resume() */
 
-	/** @private used internally to store event handlers */
-	Template.prototype.handlers = { compiled: [], end: [], exec: [], error: [], data: [] };
-	
-	/** Returns input, which is the string representation of the template */
-	Template.prototype.toString = function toString() { return this.input; };
+		compiled: null, /** The function compiled from the template text */
+		handlers: { compiled: [], end: [], exec: [], error: [], data: [] }, /** @private */
+		toString: function toString() { return this.input; } /** Returns string representation of the template */
+	};
 
 
-	/**
-	 * Add a function to execute on an event
-	 * @methodOf Template.prototype
+	/** Add a function to execute on an event
 	 * @param {String} event The name of the event the function handles
 	 * @param {Function} fn The handler to execute on the event
-	 * @return this
-	 * @type Template
-	 **/
+	 * @return {Template} this **/
 	function addEventListener(event, fn) {
 		if (!this.handlers[event]) { return; }
 		this.handlers[event].push(fn);
 		return this;
-	}
-	Template.prototype.addEventListener = addEventListener;
+	} Template.prototype.addEventListener = addEventListener;
 
 
-	/**
-	 * Remove a handler from firing on an event
-	 * @methodOf Template.prototype
+	/** Remove a handler from firing on an event
 	 * @param {String} event The name of the event the function handles
 	 * @param {Function} fn The handler to remove from the event
-	 * @return this
-	 * @type Template
-	 **/
+	 * @return {Template} this **/
 	function removeEventListener(event, fn) {
 		if (!this.handlers[event]) { return; }
 		var a = this.handlers[event], i = a.length;
 		while (i--) { if (a[i] === fn) { a = a.splice(i, 1); } }
 		this.handlers[event] = a;
 		return this;
-	}
-	Template.prototype.removeEventListener = removeEventListener;
+	} Template.prototype.removeEventListener = removeEventListener;
 
 
-	/**
-	 * Execute all handlers for the specified event
-	 * @methodOf Template.prototype
+	/** Execute all handlers for the specified event
 	 * @param {String} event The name of the event
-	 * @return this
-	 * @type Template
-	 **/
+	 * @return {Template} this **/
 	function dispatchEvent(event) {
 		if (!this.handlers[event]) { return; }
 		var args = Array.prototype.slice.call(arguments, 1),
 			a = this.handlers[event], l = a.length;
 		for (var i = 0; i < l; ++i) { a[i].apply(this, args); }
 		return this;
-	}
-	Template.prototype.dispatchEvent = dispatchEvent;
+	} Template.prototype.dispatchEvent = dispatchEvent;
 
 
-	/** @private */
+	/** @private input to function conversion */
 	function compile_fn(next) {
 		var s, i = 0, n = 0, // start, end, nested template count
 			fn    = MT, // resulting script
@@ -216,12 +169,12 @@
 		}
 
 		// callback to indicate completion
-		fn += CALL_DONE;
+		fn += CALL_END;
 
 		// close async template callbacks
 		while (n--) { fn += ASYNC_DONE; }
 
-		// compile & cache resulting script as a function
+		// compile and cache resulting script as a function
 		this.compiled = new Function(PARAMS, fn);
 		this.dispatchEvent('compiled', this.compiled);
 		if (next) { next.call(this); }
@@ -229,20 +182,12 @@
 	}
 
 
-	/**
-	 * Turn input into executable JavaScript
-	 * @methodOf Template.prototype
-	 * @param {Boolean} use_cached If true, prevents the template from recompiling
+	/** Turn input into executable JavaScript
 	 * @param {Function} next Called when the code is ready to execute
-	 * @return this (the new code is in this.compiled)
-	 * @type Template
-	 **/
-	function compile(use_cached, next) {
+	 * @return {Template} this (the new code is in this.compiled) **/
+	function compile(next) {
 		// already compiled
-		if (use_cached && this.compiled) {
-			if (next) { next.call(this); }
-			return this;
-		}
+		if (this.compiled) { if (next) { next.call(this); } return this; }
 
 		// already has template input
 		if (this.input) { return compile_fn.call(this, next); }
@@ -254,154 +199,97 @@
 			return compile_fn.call(this, next);
 		}
 
-		// get input from url
-		if (browser) {
-			// TODO: xhr input from id
-			return this;
-		}
+		// TODO: get input from url
+		if (browser) { return this; }
 
 		// read input from file
 		var template = this;
 		fs.stat(template.id, function(err, stat) {
 			if (err) { template.dispatchEvent(ERROR, err); return; }
-
 			template.stat = stat;
 			return fs.readFile(template.id, UTF8, function(err, input) {
 				if (err) { template.dispatchEvent(ERROR, err); return; }
-
-				// save input from file and compile
 				template.input = input;
 				return compile_fn.call(template, next);
 			});
 		});
 
 		return this;
-	}
-	Template.prototype.compile = compile;
+	} Template.prototype.compile = compile;
 
 
-	/**
-	 * Process the template given a data context
-	 * @methodOf Template.prototype
+	/** Process the template given a data context
 	 * @param {Object} data The data context for the template
-	 *  data will be in scope in the template
-	 * @return this
-	 * @type Template
-	 **/
+	 * @return {Template} this **/
 	function exec(data) {
 		data = data || {}; // must be an object
-		this.compile(true, function process() {
-			// process result
+		return this.compile(function process() {
 			this.dispatchEvent('exec');
 			this.compiled(this, new Output(this), data);
 		});
-		return this;
-	}
-	Template.prototype.exec = exec;
+	} Template.prototype.exec = exec;
 
 
-	/**
-	 * Get a Template object from a DOM Element
-	 * @methodOf Template
-	 * @param {String} id The identifier for the DOM Element
+	/** Get a Template object from an identifier (dom id or filename)
+	 * @param {String} id The identifier for the template (dom id or filename)
 	 * @param {Object} settings A hash of Template settings (or Template object)
-	 * @return The template created from the Element's content
-	 * @type Template
-	 **/
+	 * @return {Template} The template created from the id **/
 	function getTemplateById(id, settings) {
 		var template   = new Template(settings);
 		template.id    = id;
 		template.input = MT;
 		template.stat  = null;
-
 		return template;
-	}
-	Template.getTemplateById = getTemplateById;
+	} Template.getTemplateById = getTemplateById;
 
 
-	/**
-	 * Template.Output constructor
-	 *  Sets up template properties
-	 * @constructor
-	 * @param {Template} template The template the output comes from
-	 **/
+	/** Sets up template properties
+	 * @param {Template} template The template the output comes from **/
 	function Output(template) { this.template = template; }
-	Template.Output = Output;
+	(Template.Output = Output).prototype = { template:null };
 
 
-	/**
-	 * Template prototype
-	 *  Sets up defaults for properties and attaches public methods
-	 *  Defaults can be changed by updating the prototype
-	 **/
-	Output.prototype = {};
-	/** The template the output belongs to */
-	Output.prototype.template = null;
+	/** Continue template execution **/
+	function resume() {} Output.prototype.resume = resume;
 
 
-	/**
-	 * Continue template execution
-	 * @methodOf Template.Output.prototype
-	 **/
-	function resume() {}
-	Output.prototype.resume = resume;
-
-
-	/**
-	 * Appends all the arguments to the Output
-	 * @methodOf Template.Output.prototype
-	 * @return this
-	 * @type Template.Output
-	 **/
+	/** Appends all the arguments to the Output
+	 * @return {Template.Output} this **/
 	function echo() {
 		var data = Array.prototype.join.call(arguments, MT);
 		if (data) { this.template.dispatchEvent(DATA, data); }
 		return this;
-	}
-	Output.prototype.echo = echo;
+	} Output.prototype.echo = echo;
 
 
-	/**
-	 * Execute the child template and append its output
-	 * @methodOf Template.Output.prototype
+	/** Execute the child template and append its output
 	 * @param {String} id The identifier for the nested template
 	 * @param {Object} data The data context for the nest template
-	 * @return this
-	 * @type Template.Output
-	 **/
+	 * @return {Template.Output} this **/
 	function include(id, data) {
 		var out = this, tmpl = this.template,
-			child = tmpl.self.getTemplateById(id, tmpl);
+			child = Template.getTemplateById(id, tmpl);
 		child.addEventListener(DATA, function(data) {
 			tmpl.dispatchEvent(DATA, data);
 		});
-		child.addEventListener('error', function(err) {
-			tmpl.dispatchEvent('error', err);
+		child.addEventListener(ERROR, function(err) {
+			tmpl.dispatchEvent(ERROR, err);
 			out.resume(); // continue processing parent
 		});
-		child.addEventListener('end', this.resume);
-		child.exec(data);
-		return this;
-	}
-	Output.prototype.include = include;
+		child.addEventListener(END, this.resume);
+		return child.exec(data);
+	} Output.prototype.include = include;
 
 
-	/**
-	 * Pause execution and bind the continuation to resume
-	 * @methodOf Template.Output.prototype
-	 * @param {Function} fn The template continuation
-	 **/
+	/** Pause execution and bind the continuation to resume
+	 * @param {Function} fn The template continuation **/
 	function pause(fn) {
 		var out = this;
 		out.resume = function resume() { fn(); out.resume = resume; };
-		return;
-	}
-	Output.prototype.pause = pause;
+		return out;
+	} Output.prototype.pause = pause;
 
 
 	// attach to namespace or exports
-	if (browser) { window.Template = Template; }
-	else { exports.Template = Template; }
-	return Template;
+	return ((browser ? window : exports).Template = Template);
 })();
-
