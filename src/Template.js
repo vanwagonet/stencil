@@ -202,9 +202,9 @@
 		// allow handle to be function(error, output)
 		if (typeof handle === fn) {
 			var buffer = [], b_len = 0;
-			handlers.error.push(fn);
+			handlers.error.push(handle);
 			handlers.data.push(function(data) { buffer[b_len++] = data; });
-			handlers.end.push(function() { fn.call(this, null, buffer.join(MT)); });
+			handlers.end.push(function() { handle.call(this, null, buffer.join(MT)); });
 		}
 	}
 
