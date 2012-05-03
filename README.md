@@ -27,41 +27,41 @@ Templates are specified using php/asp syntax, with code inside special tags.
 By default the tags are php-style:
 
 ```php
-	<? javascript code here ?>
+<? javascript code here ?>
 ```
 
 There are also suffixes to the opening tag for ouput, include, and async blocks.
 
 ```php
-	<?= 'Today is ' + (new Date()) // result included in output ?>
-	<?= 'hello', ' ', 'world' // multiple results can be output ?>
-	
-	<?# 'child-template-id' // result passed as id to include() ?>
-	<?# 'child', { custom: 'data' } // a separate data object in child ?>
-	
-	<?! setTimeout(output.resume, 1000); // functionally equivalent to php usleep(1000) ?>
-	<?! someAsyncFunction(param1, function whendone(result) {
-			// do stuff with result
-			output.echo(result);
-			output.resume(); // continue processing the rest of the template
-		}); ?>
+<?= 'Today is ' + (new Date()) // result included in output ?>
+<?= 'hello', ' ', 'world' // multiple results can be output ?>
+
+<?# 'child-template-id' // result passed as id to include() ?>
+<?# 'child', { custom: 'data' } // a separate data object in child ?>
+
+<?! setTimeout(output.resume, 1000); // functionally equivalent to php usleep(1000) ?>
+<?! someAsyncFunction(param1, function whendone(result) {
+		// do stuff with result
+		output.echo(result);
+		output.resume(); // continue processing the rest of the template
+	}); ?>
 ```
 
 Members of the data object passed to exec are in the scope of the template code:
 
 ```html
-	<script type="text/template" id="template"><[CDATA[
-		Why I don't teach English anymore:
-		<?= message ?>.
-	]]></script>
-	<script>
-		(new Template({ id:'template' })).exec({
-			message: 'The book is not on the table'
-		}, function(err, result) {
-			if (err) { console.log('it didn\'t work'); return; }
-			document.body.innerHTML += result;
-		});
-	</script>
+<script type="text/template" id="template"><[CDATA[
+	Why I don't teach English anymore:
+	<?= message ?>.
+]]></script>
+<script>
+	(new Template({ id:'template' })).exec({
+		message: 'The book is not on the table'
+	}, function(err, result) {
+		if (err) { console.log('it didn\'t work'); return; }
+		document.body.innerHTML += result;
+	});
+</script>
 ```
 
 
@@ -79,49 +79,27 @@ All of the code following will also be wrapped into a function.
 This would not work:
 
 ```php
-	<?! if (true) { ?>some output<? } ?>
+<?! if (true) { ?>some output<? } ?>
 ```
 
 Since compiled it would be similar to:
 
 ```javascript
-	(function(){ if (true) { })(function() { output.echo('some output'); } });
+(function(){ if (true) { })(function() { output.echo('some output'); } });
 ```
 
 
 ## Usage - client side
 
 ```html
-	<script src="Template.js"></script>
-	<script type="text/template" id="dom_id">
-		<[CDATA[
-		... template code here ...
-		]]>
-	</script>
-	<script>
-		(new Template({ id:'dom_id' }).exec({ data:object }, {
-			onerror:function(err) { /* you broke it */ }
-			ondata:function(data) { /* use the data chunks */ }
-			onend:function() { /* all done */ }
-		});
-
-		// or
-
-		(new Template({ id:'dom_id' }).exec({ data:object }, function(err, result) {
-			/* all done */ 
-			if (err) { /* you broke it */ return; }
-			/* use the result */
-		});
-	</script>
-```
-
-
-## Usage - server side
-
-```javascript
-	var Template = require('./Template').Template;
-
-	(new Template({ id:'/path/to/template' }).exec({ data:object }, {
+<script src="Template.js"></script>
+<script type="text/template" id="dom_id">
+	<[CDATA[
+	... template code here ...
+	]]>
+</script>
+<script>
+	(new Template({ id:'dom_id' }).exec({ data:object }, {
 		onerror:function(err) { /* you broke it */ }
 		ondata:function(data) { /* use the data chunks */ }
 		onend:function() { /* all done */ }
@@ -129,42 +107,57 @@ Since compiled it would be similar to:
 
 	// or
 
-	(new Template({ id:'/path/to/template' }).exec({ data:object }, function(err, result) {
+	(new Template({ id:'dom_id' }).exec({ data:object }, function(err, result) {
 		/* all done */ 
 		if (err) { /* you broke it */ return; }
 		/* use the result */
 	});
+</script>
+```
+
+
+## Usage - server side
+
+```javascript
+var Template = require('./Template').Template;
+
+(new Template({ id:'/path/to/template' }).exec({ data:object }, {
+	onerror:function(err) { /* you broke it */ }
+	ondata:function(data) { /* use the data chunks */ }
+	onend:function() { /* all done */ }
+});
+
+// or
+
+(new Template({ id:'/path/to/template' }).exec({ data:object }, function(err, result) {
+	/* all done */ 
+	if (err) { /* you broke it */ return; }
+	/* use the result */
+});
 ```
 
 
 ## Usage - custom tags
 
 ```javascript
-	// set for all templates
-	// Template.prototype.start = ...
+// set for all templates
+// Template.prototype.start = ...
 
-	// set on a particular template
-	var t = new Template({ id:id });
-	t.start = '`';
-	t.stop  = '`';
-	t.echo  = 'print';
-	t.nest  = ' include this template:';
-	t.async = '@';
+// set on a particular template
+var t = new Template({ id:id });
+t.start = '`';
+t.stop  = '`';
+t.echo  = 'print';
+t.nest  = ' include this template:';
+t.async = '@';
 
-	// template code:
-	My pet is `if (hungry) { `hungry` } else { `sleepy` }`.
-	His name is: `print pet.name`.
-	He looks like: ` include this template: 'looks_like', pet `.
-	`@my_async_function(function(result) { output.echo(result); output.resume(); });`
-	the end.
+// template code:
+My pet is `if (hungry) { `hungry` } else { `sleepy` }`.
+His name is: `print pet.name`.
+He looks like: ` include this template: 'looks_like', pet `.
+`@my_async_function(function(result) { output.echo(result); output.resume(); });`
+the end.
 ```
-
-
-## TODOs
-
-  * More detailed examples
-  * Determine api direction (Hopefully with community input)
-  * Write test cases
 
 
 ## License 
@@ -191,3 +184,4 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
