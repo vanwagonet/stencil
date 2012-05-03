@@ -26,10 +26,13 @@ The code to generate and update a widget can be the same file.
 Templates are specified using php/asp syntax, with code inside special tags.
 By default the tags are php-style:
 
+```php
 	<? javascript code here ?>
+```
 
 There are also suffixes to the opening tag for ouput, include, and async blocks.
 
+```php
 	<?= 'Today is ' + (new Date()) // result included in output ?>
 	<?= 'hello', ' ', 'world' // multiple results can be output ?>
 	
@@ -42,9 +45,11 @@ There are also suffixes to the opening tag for ouput, include, and async blocks.
 			output.echo(result);
 			output.resume(); // continue processing the rest of the template
 		}); ?>
-		
+```
+
 Members of the data object passed to exec are in the scope of the template code:
 
+```html
 	<script type="text/template" id="template"><[CDATA[
 		Why I don't teach English anymore:
 		<?= message ?>.
@@ -57,6 +62,8 @@ Members of the data object passed to exec are in the scope of the template code:
 			document.body.innerHTML += result;
 		});
 	</script>
+```
+
 
 Some notes to remember:
 
@@ -71,15 +78,20 @@ All of the code following will also be wrapped into a function.
 
 This would not work:
 
+```php
 	<?! if (true) { ?>some output<? } ?>
+```
 
 Since compiled it would be similar to:
 
+```javascript
 	(function(){ if (true) { })(function() { output.echo('some output'); } });
+```
 
 
 ## Usage - client side
 
+```html
 	<script src="Template.js"></script>
 	<script type="text/template" id="dom_id">
 		<[CDATA[
@@ -101,10 +113,12 @@ Since compiled it would be similar to:
 			/* use the result */
 		});
 	</script>
+```
 
 
 ## Usage - server side
 
+```javascript
 	var Template = require('./Template').Template;
 
 	(new Template({ id:'/path/to/template' }).exec({ data:object }, {
@@ -120,10 +134,12 @@ Since compiled it would be similar to:
 		if (err) { /* you broke it */ return; }
 		/* use the result */
 	});
+```
 
 
 ## Usage - custom tags
 
+```javascript
 	// set for all templates
 	// Template.prototype.start = ...
 
@@ -141,9 +157,10 @@ Since compiled it would be similar to:
 	He looks like: ` include this template: 'looks_like', pet `.
 	`@my_async_function(function(result) { output.echo(result); output.resume(); });`
 	the end.
+```
 
 
-## Major TODOs
+## TODOs
 
   * More detailed examples
   * Determine api direction (Hopefully with community input)
@@ -154,7 +171,7 @@ Since compiled it would be similar to:
 
 (The MIT License)
 
-Copyright (c) 2010 Andy VanWagoner
+Copyright (c) 2012 Andy VanWagoner
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
