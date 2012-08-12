@@ -5,6 +5,10 @@ stencil is a templating engine designed by Andy VanWagoner
 to enable templates to run in an environment with asynchronous I/O,
 such as [node](http://nodejs.org), as well as in the browser.
 
+While there have been many other libraries with the same claims,
+all of the ones currently maintained use the mustache syntax,
+while this uses asp / erb / php style syntax.
+
 ## Features
 
   * Async nested templates
@@ -33,17 +37,18 @@ By default the tags are php-style:
 There are also suffixes to the opening tag for ouput, include, and async blocks.
 
 ```php
-<?= 'Today is ' + (new Date()) // result included in output ?>
+<?= 'Today is ' + (new Date()) // result is html encoded and included in output ?>
 <?= 'hello', ' ', 'world' // multiple results can be output ?>
+<?- '<em>Important</em>' // This output won't be encoded ?>
 
 <?# 'child-template-id' // result passed as id to include() ?>
-<?# 'child', { custom: 'data' } // a separate data object in child ?>
+<?# { id:'child', async:'~' }, { custom:'data' } // override options and data variables in child template ?>
 
-<?! setTimeout(output.resume, 1000); // functionally equivalent to php usleep(1000) ?>
+<?! setTimeout(next, 1000); // functionally equivalent to php sleep(1) ?>
 <?! someAsyncFunction(param1, function whendone(result) {
 		// do stuff with result
-		output.echo(result);
-		output.resume(); // continue processing the rest of the template
+		print(result);
+		next(); // continue processing the rest of the template
 	}); ?>
 ```
 
@@ -55,24 +60,19 @@ Members of the data object passed to exec are in the scope of the template code:
 	<?= message ?>.
 ]]></script>
 <script>
-	(new Template({ id:'template' })).exec({
-		message: 'The book is not on the table'
-	}, function(err, result) {
-		if (err) { console.log('it didn\'t work'); return; }
-		document.body.innerHTML += result;
-	});
+	stencil({ id:'template' }, { message:'The book is not on the table' },
+		function(err, result) {
+			if (err) return console.log('The template failed to run.');
+			console.log('The template result was:' + result);
+		}
+	);
 </script>
 ```
 
 
-Some notes to remember:
+Important note:
 
-1. The code in the output and include tags must be a comma separated list of expressions.
-2. If only one expression is in the include tag,
-the parent template's data object is passed to the child template.
-3. Otherwise the second expression in the include tag will be passed to the child template as data.
-4. Additional expressions in the include tag will be ignored.
-5. Unlike regular code tags, async tags cannot not include partial statements.
+Unlike regular code tags, async tags cannot not include partial statements.
 All of the code inside will be wrapped into a function.
 All of the code following will also be wrapped into a function.
 
@@ -85,29 +85,31 @@ This would not work:
 Since compiled it would be similar to:
 
 ```javascript
-(function(){ if (true) { })(function() { output.echo('some output'); } });
+(function(next){ if (true) { })(function() { print('some output'); } });
 ```
 
 
 ## Usage - client side
 
 ```html
-<script src="Template.js"></script>
+<script src="stencil.js"></script>
 <script type="text/template" id="dom_id">
 	<[CDATA[
 	... template code here ...
 	]]>
 </script>
 <script>
-	(new Template({ id:'dom_id' }).exec({ data:object }, {
-		onerror:function(err) { /* you broke it */ }
-		ondata:function(data) { /* use the data chunks */ }
-		onend:function() { /* all done */ }
+	stencil.compile({ id:'dom_id' }, function(err, template) {
+		template(
+			{ data:object },
+			function(data) { /* optional - use the data chunks */ },
+			function(err, result) { /* all done */ },
+		);
 	});
 
 	// or
 
-	(new Template({ id:'dom_id' }).exec({ data:object }, function(err, result) {
+	stencil('dom_id', { data:object }, function(err, result) {
 		/* all done */ 
 		if (err) { /* you broke it */ return; }
 		/* use the result */
@@ -119,44 +121,51 @@ Since compiled it would be similar to:
 ## Usage - server side
 
 ```javascript
-var Template = require('./Template').Template;
+var stencil = require('./stencil');
 
-(new Template({ id:'/path/to/template' }).exec({ data:object }, {
-	onerror:function(err) { /* you broke it */ }
-	ondata:function(data) { /* use the data chunks */ }
-	onend:function() { /* all done */ }
-});
+stencil('/path/to/template', { data:object },
+	function(data) { /* use the data chunks */ },
+	function(err, result) { /* all done */ }
+);
 
-// or
-
-(new Template({ id:'/path/to/template' }).exec({ data:object }, function(err, result) {
-	/* all done */ 
-	if (err) { /* you broke it */ return; }
-	/* use the result */
-});
+// same variations apply as client side.
 ```
 
 
 ## Usage - custom tags
 
 ```javascript
-// set for all templates
-// Template.prototype.start = ...
-
-// set on a particular template
-var t = new Template({ id:id });
-t.start = '`';
-t.stop  = '`';
-t.echo  = 'print';
-t.nest  = ' include this template:';
-t.async = '@';
+stencil({
+	id:    id,
+	start: '`',
+	stop:  '`',
+	echo:  'print',
+	safe:  'encode',
+	nest:  ' include this template:',
+	async: '@'
+}, data, function(err, result) {
+	// here's my result
+});
 
 // template code:
 My pet is `if (hungry) { `hungry` } else { `sleepy` }`.
 His name is: `print pet.name`.
 He looks like: ` include this template: 'looks_like', pet `.
-`@my_async_function(function(result) { output.echo(result); output.resume(); });`
+`@my_async_function(function(result) { print(result); next(); });`
 the end.
+```
+
+
+## Usage - synchronous
+
+I created a way to be synchronous, if you really want to. The caveat here
+is that you cannot actually do anything asynchronous in your template, or
+you will only get partial results (up to the point that your async code
+started). Includes are made synchronously.
+
+```javascript
+try { var result = stencil({ id:'id', sync_include:true }, data); }
+catch (err) { /* You broke it. */ }
 ```
 
 

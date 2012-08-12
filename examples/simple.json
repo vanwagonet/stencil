@@ -1,4 +1,4 @@
-<?! setTimeout(output.resume, 5000); ?>
+<?! setTimeout(next, 5000); ?>
 {
 	"hello":"world",
 	"clicked":<?= t ?>,

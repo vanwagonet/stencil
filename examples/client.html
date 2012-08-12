@@ -5,7 +5,7 @@
 </head>
 <body>
 	<div id="out"></div>
-	<script src="../src/Template.js"></script>
+	<script src="../stencil.js"></script>
 	<script id="template" type="text/template">
 	<![CDATA[
 		<div>
@@ -36,8 +36,7 @@ unbroken by newline.
 			done, init, cmpl, exec, wait, end, // timing vars
 			start = (new Date()).getTime();
 
-		var str = '';
-		function ondata(data) { str += data; }
+		var match, str = '';
 
 		function output() {
 			// output onto the page
@@ -53,31 +52,28 @@ unbroken by newline.
 				'ms complete: ' + (done - cmpl) +
 				'ms write: '    + (end  - wait) +
 				'ms total: '    + (done - start + end - wait) +
-				'ms <br/><br/>' + out.innerHTML;
+				'ms <br/><br/> matches:' + match + out.innerHTML;
 
 			// don't execute twice
 			output = function(){};
 		}
 
 		// initialize the template
-		var template = new Template({ id:'template' });
 		init = (new Date()).getTime();
-
-		// compile the template
-		template.compile(function(){
+		stencil.compile({ id:'template' }, function(err, template){
 			cmpl = (new Date()).getTime();
-			
+
 			// execute the template
-			template.exec({
+			template({
 				suffix:[ 'th', 'st', 'nd', 'rd', 'th' ],
 				msg:'Message in nested template'
-			}, {
-				ondata:ondata,
-				onend:function() {
-					done = (new Date()).getTime();
-					// make sure exec timing is done
-					if (exec) { output(); }
-				}
+			}, function(data) {
+				str += data;
+			}, function(err, all) {
+				done = (new Date()).getTime();
+				match = all === str;
+				// make sure exec timing is done
+				if (exec) { output(); }
 			});
 			exec = (new Date()).getTime();
 

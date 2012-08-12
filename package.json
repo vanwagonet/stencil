@@ -1,0 +1,16 @@
+{
+	"name": "stencil",
+	"description": "Async JavaScript Templating",
+	"version": "0.5",
+	"author": "Andy VanWagoner <thetalecrafter@gmail.com>",
+	"keywords": [
+		"stencil",
+		"template",
+		"view",
+		"asynchronous"
+	],
+	"repository": "git://github.com/thetalecrafter/stencil",
+	"main": "stencil",
+	"engines": { "node": "*" }
+}
+
