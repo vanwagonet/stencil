@@ -52,7 +52,7 @@ There are also suffixes to the opening tag for ouput, include, and async blocks.
 	}); ?>
 ```
 
-Members of the data object passed to exec are in the scope of the template code:
+Members of the data object are put in the scope of the template code:
 
 ```html
 <script type="text/template" id="template"><[CDATA[
@@ -158,10 +158,10 @@ the end.
 
 ## Usage - synchronous
 
-I created a way to be synchronous, if you really want to. The caveat here
-is that you cannot actually do anything asynchronous in your template, or
-you will only get partial results (up to the point that your async code
-started). Includes are made synchronously.
+You can fetch templates synchronously, if you need to. The caveat here
+is that you cannot do anything asynchronous in your template, or
+you will only get the ouput up until the first asynchronous part. The setting
+really only makes includes happen synchronously.
 
 ```javascript
 try { var result = stencil({ id:'id', sync_include:true }, data); }
