@@ -8,7 +8,7 @@
 		NL = '\n', ECHO = 'print',
 		CR = '\r', END  = 'end',
 
-		PARAMS = [ ECHO, NEST, END ].join(),
+		PARAMS = [ ECHO, NEST, 'context' ].join(),
 
 		ECHO_START  = ECHO + '(',       ECHO_DONE = '\n);',
 		STAT_START  = ECHO_START + "'", STAT_DONE = "');",
@@ -16,14 +16,14 @@
 
 		NEST_START  = 'include(',         NEST_CONT  = '\n,function(){',
 		ASYNC_START = '(function(next){', ASYNC_CONT = '\n})(function(){',
-		ASYNC_DONE  = '})',               CALL_END   = 'end()',
+		ASYNC_DONE  = '})',               CALL_END   = 'print.end()',
 
 		// find & properly encode quotes & newlines
 		QUOTE_RE    = /([^\\])?'/g, QUOTE_ESCAPED = "$1\\'",
 		NEWLINE_RE  = /(\r?\n)/g, NEWLINE_ESCAPED = '\\n',
 
 		// make data members "global"
-		CONTEXT_START = 'with(arguments[3]){', CONTEXT_END = '}';
+		CONTEXT_START = 'with(context){', CONTEXT_END = '}';
 
 
 	/** Loads the template asynchronously, and then fires a callback
@@ -44,16 +44,7 @@
 	/** Loads the template, and then fires a callback with the error, if any,
 	 * and the compiled function. **/
 	stencil.compile = function(o, next) {
-		if (typeof o === 'string') o = { id:o };
-		o = o || {};
-		o.id = o.id       || null, /* Identifier for the template (filename, or dom id) */
-		o.start = o.start || '<?', /* Start tag in the template */
-		o.stop = o.stop   || '?>', /* Stop tag in the template */
-		o.echo = o.echo   || '-',  /* Suffix for echoing result of the expression */
-		o.safe = o.safe   || '=',  /* Suffix for echoing result of the expression html encoded */
-		o.nest = o.nest   || '#',  /* Suffix for including the template identified by the result of the expression */
-		o.async = o.async || '!',  /* Suffix for async blocks, after which any execution is paused, and only resumed by calling output.resume() */
-		o.sync_include = o.sync_include || false; /* If true, nested templates will be fetched and rendered synchronously */
+		o = stencil.options(o);
 		stencil.fetch(o, function(err, text) {
 			if (err) return next(err);
 			var fn = compile(text, o);
@@ -63,6 +54,30 @@
 				next(null, fn);
 			} catch (err) { next(err); }
 		});
+	};
+
+
+	/** merges the defaults into the object provided */
+	stencil.options = function(o) {
+		if (typeof o === 'string') o = { id:o };
+		o = o || {};
+		var opt, defs = stencil.defaults;
+		for (opt in defs) { o[opt] = o[opt] || defs[opt]; }
+		return o;
+	};
+
+
+	/** default options */
+	stencil.defaults = {
+		id:    null, /* Identifier for the template (filename, or dom id) */
+		start: '<?', /* Start tag in the template */
+		stop:  '?>', /* Stop tag in the template */
+		echo:  '-',  /* Suffix for echoing result of the expression */
+		safe:  '=',  /* Suffix for echoing result of the expression html encoded */
+		nest:  '#',  /* Suffix for including the template identified by the result of the expression */
+		async: '!',  /* Suffix for async blocks, after which any execution is paused, and only resumed by calling output.resume() */
+		sync_include: false, /* If true, nested templates will be fetched and rendered synchronously */
+		parse: null  /* A reference to parse-js or uglify-js's parser, used to kill the with statement */
 	};
 
 
@@ -103,7 +118,7 @@
 	/** @private convert template text to javascript code **/
 	function compile(src, opts) {
 		var s, i = 0, n = 0, // start, end, nested template count
-			fn = CONTEXT_START, // resulting script
+			fn = opts.parse ? MT : CONTEXT_START, // resulting script
 			// cache vars used in loop
 			start = opts.start, startl = start.length,
 			stopt = opts.stop,  stopl  = stopt.length,
@@ -171,16 +186,42 @@
 		// close async template callbacks
 		while (n--) { fn += ASYNC_DONE; }
 
-		fn += CONTEXT_END;
+		if (opts.parse) {
+			fn = without(opts, fn);
+		} else {
+			fn += CONTEXT_END;
+		}
 		console.log(fn);
 
 		return fn;
 	}
 
 
+	/** @private Uses parse-js to compile a version of the template that avoids the 'with' statement. */
+	function without(opts, fn) {
+		var names = {}, declare = [], name,
+			whitelist = [ 'print', 'include', 'context', 'next' ];
+		(function findnames(ast) {
+			if (!ast) return;
+			if ('name' === ast[0]) return names[ast[1]] = true;
+			if ('object' === typeof ast) {
+				for (var i = 0; i < ast.length; ++i) {
+					findnames(ast[i]);
+				}
+			}
+		})(opts.parse(fn));
+		for (name in names) {
+			if (~whitelist.indexOf(name)) continue;
+			declare.push(name + '=context.' + name + '||this.' + name);
+		}
+		fn = 'var ' + declare.join() + ';\n' + fn;
+		return fn;
+	};
+
+
 	/** @private wrap the compiled function to make sure env is set up properly. **/
 	function wrap(fn, opts) {
-		return function(vars, data, end) {
+		function template(vars, data, end) {
 			if (!end) { end = data; data = null; }
 			if (!end) { end = function(err) { if (err) throw err; }; }
 
@@ -200,7 +241,7 @@
 				if (data && text) data(text);
 			};
 
-			function done(err) { end(err, result); }
+			print.end = function(err) { end(err, result); };
 
 			function include(o, v, next) {
 				if (typeof o === 'string') o = { id:o };
@@ -221,10 +262,12 @@
 				});
 			}
 
-			fn(print, include, done, vars || {});
+			fn(print, include, vars || {});
 
 			return result; // just in case is was synchronous.
-		};
+		}
+		template.inner = fn;
+		return template;
 	}
 
 

@@ -135,6 +135,8 @@ stencil('/path/to/template', { data:object },
 ## Usage - custom tags
 
 ```javascript
+
+// override defaults for this template
 stencil({
 	id:    id,
 	start: '`',
@@ -147,6 +149,11 @@ stencil({
 	// here's my result
 });
 
+// or for all templates
+stencil.defaults.start = '`';
+stencil.defaults.stop  = '`';
+...
+
 // template code:
 My pet is `if (hungry) { `hungry` } else { `sleepy` }`.
 His name is: `print pet.name`.
@@ -156,7 +163,7 @@ the end.
 ```
 
 
-## Usage - synchronous
+## Usage - extras
 
 You can fetch templates synchronously, if you need to. The caveat here
 is that you cannot do anything asynchronous in your template, or
@@ -166,6 +173,30 @@ really only makes includes happen synchronously.
 ```javascript
 try { var result = stencil({ id:'id', sync_include:true }, data); }
 catch (err) { /* You broke it. */ }
+```
+
+You can also compile templates without a 'with' statement, by including a
+reference to uglify-js's parse function. This will improve the rendering
+performance, but is expensive at compile time.
+
+```javascript
+stencil.compile({ id:'id', parse:require('uglify-js').parser.parse }, function(err, fn) {
+	// fn does not use the 'with' statement
+})
+```
+
+Removing the 'with' statement also means all variables in your template
+are declared with 'var', so you can't create implicit globals, and you
+won't get errors by using a context variable that wasn't passed in.
+
+```php
+<?
+	// data passed in does not contain either variable
+	bogus_var = 'bogus'; // won't implicitly create a global
+	if (maybe_var) { // won't throw an error
+		/* use maybe_var */
+	}
+?>
 ```
 
 
