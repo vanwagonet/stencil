@@ -175,6 +175,11 @@ try { var result = stencil({ id:'id', sync_include:true }, data); }
 catch (err) { /* You broke it. */ }
 ```
 
+Or if you have don't get the template by dom id, ajax call, (or by filename
+in node), you can pass in the 'fetch' option a function that retrieves
+the template text and has this signature: (stencil_options, next(error, text))
+
+
 You can also compile templates without a 'with' statement, by including a
 reference to uglify-js's parse function. This will improve the rendering
 performance, but is expensive at compile time.

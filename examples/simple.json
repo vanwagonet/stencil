@@ -1,6 +1,9 @@
-<?! setTimeout(next, 5000); ?>
 {
 	"hello":"world",
 	"clicked":<?= t ?>,
-	"responded":<?= Date.now() - t ?>
+<?! setTimeout(function() {
+	print('"responded":', Date.now() - t, ',\n');
+	next();
+}, 5000); ?>
+	"output-after-async-but-executed-before":<?= Date.now() - t ?>
 }
