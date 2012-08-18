@@ -11,10 +11,10 @@
 		<div>
 			<?# 'nested' ?>
 			<?# 'nested', { msg: 'Custom data passed to child template' } ?>
-			<? var k = 0; /* only star comments allowed */ ?>
+			<? var k = 0; //slash or star comments allowed ?>
 			<table>
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
-				<tr class="<?= k % 2 ? 'odd' : 'even' /* star comments should be fine in any code tag */ ?>">
+				<tr class="<?= k % 2 ? 'odd' : 'even' // slash comments should be fine in any code tag ?>">
 					<th><?= k ?></th>
 					<td>This is the <?= k, (k % 100 > 10 && k % 100 < 20) ? 'th' : suffix[Math.min(k % 10, 4)] ?> row.</td>
 				</tr>
@@ -38,26 +38,6 @@ unbroken by newline.
 
 		var match, str = '';
 
-		function output() {
-			// output onto the page
-			wait = (new Date()).getTime();
-			out.innerHTML += str;
-			end  = (new Date()).getTime();
-
-			// preped timing information
-			out.innerHTML = 
-				'init: '        + (init - start) +
-				'ms compile: '  + (cmpl - init) +
-				'ms execute: '  + (exec - cmpl) +
-				'ms complete: ' + (done - cmpl) +
-				'ms write: '    + (end  - wait) +
-				'ms total: '    + (done - start + end - wait) +
-				'ms <br/><br/> matches:' + match + out.innerHTML;
-
-			// don't execute twice
-			output = function(){};
-		}
-
 		// initialize the template
 		init = (new Date()).getTime();
 		stencil.compile({ id:'template' }, function(err, template){
@@ -80,6 +60,26 @@ unbroken by newline.
 			// make sure complete timing is done
 			if (done) { output(); }
 		});
+
+		function output() {
+			// output onto the page
+			wait = (new Date()).getTime();
+			out.innerHTML += str;
+			end  = (new Date()).getTime();
+
+			// preped timing information
+			out.innerHTML = 
+				'init: '        + (init - start) +
+				'ms compile: '  + (cmpl - init) +
+				'ms execute: '  + (exec - cmpl) +
+				'ms complete: ' + (done - cmpl) +
+				'ms write: '    + (end  - wait) +
+				'ms total: '    + (done - start + end - wait) +
+				'ms <br/><br/> matches:' + match + out.innerHTML;
+
+			// don't execute twice
+			output = function(){};
+		}
 	</script>
 </body>
 </html>

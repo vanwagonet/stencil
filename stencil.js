@@ -1,4 +1,4 @@
-/*! Stencil Template v0.6.1
+/*! Stencil Template v0.6.2
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
@@ -20,9 +20,10 @@
 		ASYNC_DONE  = '});' + ECHO + '(',
 		EXTRA = '""',  CALL_NEXT = NEXT + '()',
 
-		// find & properly encode newlines
-		TAB_RE  = /\\t/g,             TAB_ESCAPED = '\t',
-		NEWLINE_RE  = /((\\r)?\\n)/g, NEWLINE_ESCAPED = '$1",\n"',
+		TAB_RE     = /\\t/g,          TAB_ESCAPED     = '\t', // use real tabs instead of escaped
+		NEWLINE_RE = /((\\r)?\\n)/g,  NEWLINE_ESCAPED = '$1",\n"', // properly encode newlines
+		COMMENT_RE = /\/\/(.*)$/,     COMMENT_ESCAPED = '/*$1*/', // keep // comments from breaking result
+		TRAIL_RE   = /[;,](\s*)$/,    TRAIL_ESCAPED   = '$1', // fix trailing commas and semicolons
 
 		// make data members "global"
 		DATA_START = 'with(' + DATA + '){', DATA_END = '}';
@@ -31,7 +32,7 @@
 	/** Loads the template asynchronously, and then fires a callback
 	 * with the error, if any, and the compiled function. **/
 	function stencil(o, vars, data, end) {
-		var id = typeof o === 'string' ? o : o && o.id, result;
+		var id = ('string' === typeof o) ? o : o && o.id, result;
 		if (id && stencil.cache[id]) return stencil.cache[id](vars, data, end);
 		stencil.compile(o, function(err, fn) {
 			if (err) return (end || data)(err);
@@ -45,13 +46,17 @@
 
 	/** Loads the template, and then fires a callback with the error, if any,
 	 * and the compiled function. **/
-	stencil.compile = function(o, next) {
+	stencil.compile = function(o, next, string) {
 		(o.fetch || stencil.fetch)(o, function(err, text) {
 			if (err) return next(err);
 			try {
-				var fn = stencil.translate(text, o);
-				fn += '\n//@ sourceURL=' + o.id;
-				fn = stencil.prepare(new Function(PARAMS, fn), o);
+				var fn = translate(text, o);
+				if (string) {
+					fn = 'function(' + PARAMS + '){' + fn + '}';
+				} else {
+					fn += '\n//@ sourceURL=' + o.id;
+					fn = stencil.prepare(new Function(PARAMS, fn), o);
+				}
 				next(null, fn);
 			} catch (err) { next(err); }
 		});
@@ -94,7 +99,7 @@
 
 			text = new XMLHttpRequest(); // get input from url, only basic support.
 			text.onload = function() {
-				if (text.status >= 200 && text.status < 300) {
+				if (200 <= text.status && 300 > text.status) {
 					next(null, text = text.responseText);
 				} else { text.onerror(); }
 			};
@@ -116,10 +121,10 @@
 	}
 
 
-	/** convert template text to javascript code **/
-	stencil.translate = function(src, opts) {
+	/** @private convert template text to javascript code **/
+	function translate(src, opts) {
 		opts = stencil.options(opts);
-		var s, i = 0, n = 0, // start, end, nested template count
+		var s, i = 0, code, pre, post, // start index, end index, ...
 			fn = opts.parse ? MT : DATA_START, // resulting script
 			// cache vars used in loop
 			start = opts.start, startl = start.length,
@@ -145,36 +150,20 @@
 
 			// wrap javascript chunk
 			s = (i += startl); i = src.indexOf(stopt, s);
-			if (src.substr(s, safel) === safet) {
-				// safe echo chunk
-				s  += safel;
-				fn += SAFE_START;
-				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
-				fn += SAFE_DONE;
-			} else if (src.substr(s, echol) === echot) {
-				// echo chunk
-				s  += echol;
-				fn += ECHO_START;
-				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
-				fn += ECHO_DONE;
-			} else if (src.substr(s, nestl) === nest) {
-				// nest template chunk
-				s  += nestl;
-				fn += NEST_START;
-				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
-				fn += NEST_DONE;
-			} else if (src.substr(s, asyncl) === async) {
-				// async funciton call chunk
-				s  += asyncl;
-				fn += ASYNC_START;
-				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
-				fn += ASYNC_DONE;
-			} else {
-				// regular code chunk
-				fn += CODE_START;
-				fn += (i < 0 ? src.substr(s) : src.substring(s, i));
-				fn += CODE_DONE;
+			if (src.substr(s, safel) === safet) { // safe echo chunk
+				s  += safel; pre = SAFE_START; post = SAFE_DONE;
+			} else if (src.substr(s, echol) === echot) { // echo chunk
+				s  += echol; pre = ECHO_START; post = ECHO_DONE;
+			} else if (src.substr(s, nestl) === nest) { // nest template chunk
+				s  += nestl; pre = NEST_START; post = NEST_DONE;
+			} else if (src.substr(s, asyncl) === async) { // async funciton call chunk
+				s  += asyncl; pre = ASYNC_START; post = ASYNC_DONE;
+			} else { // regular code chunk
+				pre = CODE_START; post = CODE_DONE;
 			}
+			code = (i < 0 ? src.substr(s) : src.substring(s, i))
+				.replace(COMMENT_RE, COMMENT_ESCAPED).replace(TRAIL_RE, TRAIL_ESCAPED);
+			fn += pre + code + post;
 			if (i >= 0) {
 				i += stopl;
 				// skip newline directly following close tag
@@ -290,8 +279,8 @@
 
 
 	// export the stencil function
-	if (typeof exports !== 'undefined') {
-		if (typeof module !== 'undefined' && module.exports) {
+	if ('undefined' !== typeof exports) {
+		if ('undefined' !== typeof module && module.exports) {
 			exports = module.exports = stencil;
 		}
 		exports.stencil = stencil;
