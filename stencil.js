@@ -1,4 +1,4 @@
-/*! Stencil Template v0.6.2
+/*! Stencil Template v0.7
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
@@ -18,15 +18,14 @@
 		NEST_DONE   = ');' + ECHO + '(',
 		ASYNC_START = ');' + ECHO + '.' + ASYNC + '(function(){',
 		ASYNC_DONE  = '});' + ECHO + '(',
-		EXTRA = '""',  CALL_NEXT = NEXT + '()',
+		EXTRA = '""',  CALL_NEXT = NEXT + '();',
 
 		TAB_RE     = /\\t/g,          TAB_ESCAPED     = '\t', // use real tabs instead of escaped
 		NEWLINE_RE = /((\\r)?\\n)/g,  NEWLINE_ESCAPED = '$1",\n"', // properly encode newlines
 		COMMENT_RE = /\/\/(.*)$/,     COMMENT_ESCAPED = '/*$1*/', // keep // comments from breaking result
 		TRAIL_RE   = /[;,](\s*)$/,    TRAIL_ESCAPED   = '$1', // fix trailing commas and semicolons
 
-		// make data members "global"
-		DATA_START = 'with(' + DATA + '){', DATA_END = '}';
+		WITH_START = 'with(' + DATA + '){', WITH_END = '}'; // make data members "global"
 
 
 	/** Loads the template asynchronously, and then fires a callback
@@ -125,7 +124,7 @@
 	function translate(src, opts) {
 		opts = stencil.options(opts);
 		var s, i = 0, code, pre, post, // start index, end index, ...
-			fn = opts.parse ? MT : DATA_START, // resulting script
+			fn = opts.parse ? MT : WITH_START, // resulting script
 			// cache vars used in loop
 			start = opts.start, startl = start.length,
 			stopt = opts.stop,  stopl  = stopt.length,
@@ -180,7 +179,7 @@
 		if (opts.parse) {
 			fn = without(opts, fn);
 		} else {
-			fn += DATA_END;
+			fn += WITH_END;
 		}
 
 		return fn;
@@ -190,7 +189,7 @@
 	/** @private Uses parse-js to compile a version of the template that avoids the 'with' statement. */
 	function without(opts, fn) {
 		opts = stencil.options(opts);
-		var names = {}, declare = [], name, ast,
+		var names = {}, declare = [], define = [], name, ast,
 			whitelist = [ ECHO, SAFE, DATA, NEXT ];
 
 		try { ast = opts.parse(fn); }
@@ -207,9 +206,14 @@
 		})(ast);
 		for (name in names) {
 			if (~whitelist.indexOf(name)) continue;
-			declare.push(name + '=context.' + name + '||this.' + name);
+			declare.push(name);
+			define.push(name + '=' + DATA + '.' + name + '||this.' + name);
 		}
-		if (declare.length) { fn = 'var ' + declare.join() + ';' + fn; }
+		if (declare.length) {
+			fn = 'd()' + fn +
+				'\nvar ' + declare.join() + ';' +
+				'\nfunction d(){\n' + define.join(';\n') + ';\n}';
+		}
 		return fn;
 	};
 
