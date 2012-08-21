@@ -30,14 +30,15 @@
 		WITH_START = 'with(' + DATA + '){', WITH_END = '}'; // make data members "global"
 
 
-	/** Loads the template asynchronously, and then fires a callback
-	 * with the error, if any, and the compiled function. **/
+	/** Loads the template, and then fires a callback
+	 * with the error, if any, and the template result. **/
 	function stencil(o, vars, data, end) {
-		var id = ('string' === typeof o) ? o : o && o.id, result;
-		if (id && stencil.cache[id]) return stencil.cache[id](vars, data, end);
-		stencil.compile(o, function(err, fn) {
+		var result; o = stencil.options(o);
+		if (stencil.cache[o.id]) return stencil.cache[o.id](vars, data, end);
+		(o.fetch || stencil.fetch)(o, function(err, text) {
 			if (err) return (end || data)(err);
-			result = fn(vars, data, end);
+			try { result = stencil.compile(text, o)(vars, data, end); }
+			catch (err) { (end || data)(err); }
 		});
 		return result; // just in case is was synchronous.
 	}
@@ -45,22 +46,18 @@
 	stencil.cache = {}; // cache resulting functions
 
 
-	/** Loads the template, and then fires a callback with the error, if any,
-	 * and the compiled function. **/
-	stencil.compile = function(o, next, string) {
-		(o.fetch || stencil.fetch)(o, function(err, text) {
-			if (err) return next(err);
-			try {
-				var fn = translate(text, o);
-				if (string) {
-					fn = 'function(' + PARAMS + '){' + fn + '}';
-				} else {
-					fn += '\n//@ sourceURL=' + o.id;
-					fn = stencil.prepare(new Function(PARAMS, fn), o);
-				}
-				next(null, fn);
-			} catch (err) { next(err); }
-		});
+	/** Compiles the template text into a function. If the third param is true,
+	 * returns the function as a string for use with stencil.prepare. **/
+	stencil.compile = function(text, o, string) {
+		o = stencil.options(o);
+		var fn = translate(text, o);
+		if (string) {
+			fn = 'function(' + PARAMS + '){' + fn + '}';
+		} else {
+			fn += '\n//@ sourceURL=' + o.id;
+			fn = stencil.prepare(new Function(PARAMS, fn), o);
+		}
+		return fn;
 	};
 
 
@@ -124,7 +121,6 @@
 
 	/** @private convert template text to javascript code **/
 	function translate(src, opts) {
-		opts = stencil.options(opts);
 		var s, i = 0, code, pre, post, // start index, end index, ...
 			fn = opts.parse ? MT : WITH_START, // resulting script
 			// cache vars used in loop
@@ -183,7 +179,6 @@
 		} else {
 			fn += WITH_END;
 		}
-		console.log(fn);
 
 		return fn;
 	}
@@ -223,6 +218,10 @@
 
 	/** wrap the compiled function to make sure env is set up properly. **/
 	stencil.prepare = function(fn, opts) {
+		if ('string' === typeof fn) {
+			fn = fn.replace(/^\s*function[^\{]+\{|\}\s*$/g, '');
+			fn = new Function(PARAMS, fn);
+		}
 		opts = stencil.options(opts);
 		function template(vars, data, end) {
 			if (!end) { end = data; data = null; }

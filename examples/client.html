@@ -40,7 +40,8 @@ unbroken by newline.
 
 		// initialize the template
 		init = (new Date()).getTime();
-		stencil.compile({ id:'template' }, function(err, template){
+		stencil.fetch({ id:'template' }, function(err, template){
+			template = stencil.compile(template, { id:'template' });
 			cmpl = (new Date()).getTime();
 
 			// execute the template
