@@ -2,7 +2,9 @@
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
-(function(scope) {
+(function(global) {
+	"use strict";
+
 		// mortar between template chunks
 	var MT = '',   NEST = 'include', SAFE = 'escape',
 		NL = '\n', ECHO = 'print',   DATA = 'context',
@@ -87,7 +89,7 @@
 
 
 	/** Loads the identified template **/
-	if (scope.document && scope.XMLHttpRequest) { // browser
+	if (global.document && global.XMLHttpRequest) { // browser
 		stencil.fetch = function(o, next) {
 			var text;
 			if (text = document.getElementById(o.id)) { // get text from dom id
@@ -181,6 +183,7 @@
 		} else {
 			fn += WITH_END;
 		}
+		console.log(fn);
 
 		return fn;
 	}
@@ -190,7 +193,7 @@
 	function without(opts, fn) {
 		opts = stencil.options(opts);
 		var names = {}, declare = [], define = [], name, ast,
-			whitelist = [ ECHO, SAFE, DATA, NEXT ];
+			whitelist = [ ECHO, SAFE, DATA, NEXT, 'this' ];
 
 		try { ast = opts.parse(fn); }
 		catch (err) { return DATA_START + fn + DATA_END; }
@@ -273,7 +276,7 @@
 			print.result = MT;
 			print.q = [ fn ];
 
-			fn(vars || {}, print, encode, next);
+			fn.call(global, vars || {}, print, encode, next);
 
 			return print.result; // just in case is was synchronous.
 		}
@@ -289,7 +292,7 @@
 		}
 		exports.stencil = stencil;
 	} else {
-		scope.stencil = stencil;
+		global.stencil = stencil;
 	}
 })(this);
 
