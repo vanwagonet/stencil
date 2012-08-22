@@ -193,9 +193,19 @@ reference to uglify-js's parse function. This will improve the rendering
 performance, but is expensive at compile time.
 
 ```javascript
-stencil.compile({ id:'id', parse:require('uglify-js').parser.parse }, function(err, fn) {
-	// fn does not use the 'with' statement, but still can't "use strict";
-})
+// fn does not use the 'with' statement, but still can't "use strict";
+var fn = stencil.compile(source, { parse:require('uglify-js').parser.parse });
+
+stencil.defaults.parse = require('uglify-js').parser.parse;
+stencil({ id:'id' }, function(err, result) {
+	// result achieved without 'with'
+});
+
+stencil.defaults.parse = function(){ return []; };
+stencil({ id:'id' }, function(err, result) {
+	// no 'with', but names were not properly identified, so the template
+	//  code would have to prefix data members with `context.`
+});
 ```
 
 Removing the 'with' statement also means all variables in your template
