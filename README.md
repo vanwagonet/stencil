@@ -73,8 +73,8 @@ Members of the data object are put in the scope of the template code:
 Important note:
 
 Unlike regular code tags, async tags cannot not include partial statements.
-All of the code inside will be wrapped into a function.
-All of the code following will also be wrapped into a function.
+All of the code inside will be wrapped into a function, and will be executed
+after the main block completes.
 
 This would not work:
 
@@ -85,7 +85,14 @@ This would not work:
 Since compiled it would be similar to:
 
 ```javascript
-(function(next){ if (true) { })(function() { print('some output'); } });
+async(function(next){ if (true) { }); print('some output'); }
+```
+
+```php
+<? alert('This executes first'); ?>
+<?! alert('This executes third, after the main block completes'); next(); ?>
+<?! alert('fourth'); next(); ?>
+<? alert('second'); ?>
 ```
 
 
@@ -99,20 +106,21 @@ Since compiled it would be similar to:
 	]]>
 </script>
 <script>
-	stencil.compile({ id:'dom_id' }, function(err, template) {
+	stencil('dom_id', { data:object }, function(err, result) {
+		/* all done */ 
+		if (err) { /* you broke it */ return; }
+		/* use the result */
+	});
+
+	// or
+
+	stencil.fetch({ id:'dom_id' }, function(err, template) {
+		template = stencil.compile(template, { async:'~' });
 		template(
 			{ data:object },
 			function(data) { /* optional - use the data chunks */ },
 			function(err, result) { /* all done */ },
 		);
-	});
-
-	// or
-
-	stencil('dom_id', { data:object }, function(err, result) {
-		/* all done */ 
-		if (err) { /* you broke it */ return; }
-		/* use the result */
 	});
 </script>
 ```
@@ -186,7 +194,7 @@ performance, but is expensive at compile time.
 
 ```javascript
 stencil.compile({ id:'id', parse:require('uglify-js').parser.parse }, function(err, fn) {
-	// fn does not use the 'with' statement
+	// fn does not use the 'with' statement, but still can't "use strict";
 })
 ```
 
