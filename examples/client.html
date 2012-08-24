@@ -11,10 +11,10 @@
 		<div>
 			<?# 'nested' ?>
 			<?# 'nested', { msg: 'Custom data passed to child template' } ?>
-			<? var k = 0; //slash or star comments allowed ?>
+			<? var k = 0; /* only star comments allowed */ ?>
 			<table>
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
-				<tr class="<?= k % 2 ? 'odd' : 'even' // slash comments should be fine in any code tag ?>">
+				<tr class="<?= k % 2 ? 'odd' : 'even' /* comments should be fine in any code tag */ ?>">
 					<th><?= k ?></th>
 					<td>This is the <?= k, (k % 100 > 10 && k % 100 < 20) ? 'th' : suffix[Math.min(k % 10, 4)] ?> row.</td>
 				</tr>

@@ -24,7 +24,6 @@
 
 		TAB_RE     = /\\t/g,          TAB_ESCAPED     = '\t', // use real tabs instead of escaped
 		NEWLINE_RE = /((\\r)?\\n)/g,  NEWLINE_ESCAPED = '$1",\n"', // properly encode newlines
-		COMMENT_RE = /\/\/(.*)$/,     COMMENT_ESCAPED = '/*$1*/', // keep // comments from breaking result
 		TRAIL_RE   = /[;,](\s*)$/,    TRAIL_ESCAPED   = '$1', // fix trailing commas and semicolons
 
 		WITH_START = 'with(' + DATA + '){', WITH_END = '}'; // make data members "global"
@@ -159,7 +158,7 @@
 				pre = CODE_START; post = CODE_DONE;
 			}
 			code = (i < 0 ? src.substr(s) : src.substring(s, i))
-				.replace(COMMENT_RE, COMMENT_ESCAPED).replace(TRAIL_RE, TRAIL_ESCAPED);
+				.replace(TRAIL_RE, TRAIL_ESCAPED);
 			fn += pre + code + post;
 			if (i >= 0) {
 				i += stopl;
@@ -191,7 +190,7 @@
 			whitelist = [ ECHO, SAFE, DATA, NEXT, 'this' ];
 
 		try { ast = opts.parse(fn); }
-		catch (err) { return DATA_START + fn + DATA_END; }
+		catch (err) { return WITH_START + fn + WITH_END; }
 
 		(function findnames(ast) {
 			if (!ast) return;

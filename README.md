@@ -37,14 +37,14 @@ By default the tags are php-style:
 There are also suffixes to the opening tag for ouput, include, and async blocks.
 
 ```php
-<?= 'Today is ' + (new Date()) // result is html encoded and included in output ?>
-<?= 'hello', ' ', 'world' // multiple results can be output ?>
-<?- '<em>Important</em>' // This output won't be encoded ?>
+<?= 'Today is ' + (new Date()) /* result is html encoded and included in output */ ?>
+<?= 'hello', ' ', 'world' /* multiple results can be output */ ?>
+<?- '<em>Important</em>' /* This output won't be encoded */ ?>
 
-<?# 'child-template-id' // result passed as id to include() ?>
-<?# { id:'child', async:'~' }, { custom:'data' } // override options and data variables in child template ?>
+<?# 'child-template-id' /* result passed as id to include() */ ?>
+<?# { id:'child', async:'~' }, { custom:'data' } /* override options and data variables in child template */ ?>
 
-<?! setTimeout(next, 1000); // functionally equivalent to php sleep(1) ?>
+<?! setTimeout(next, 1000); /* functionally equivalent to php sleep(1) */ ?>
 <?! someAsyncFunction(param1, function whendone(result) {
 		// do stuff with result
 		print(result);
