@@ -1,4 +1,4 @@
-/*! Stencil Template v0.7
+/*! Stencil Template v0.7.2
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
@@ -239,9 +239,9 @@
 
 			function encode() {
 				return Array.prototype.join.call(arguments, MT)
-					.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+					.replace(/&/g, '&amp;')
 					.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-					.replace(/&/g, '&amp;');
+					.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 			};
 
 			print[NEST] = function(o, v) {
