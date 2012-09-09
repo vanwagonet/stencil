@@ -5,10 +5,10 @@ stencil is a templating engine designed by Andy VanWagoner
 to enable templates to run in an environment with asynchronous I/O,
 such as [node](http://nodejs.org), as well as in the browser.
 
-If ([ejs](https://github.com/visionmedia/ejs)) suites your needs,
-you should probably use that as it is better tested and is liekly
+If [ejs](https://github.com/visionmedia/ejs) suites your needs,
+you should probably use that as it is better tested and is likely
 more robust. However, stencil includes a few things that ejs
-does't in a stable release.
+does't yet.
 
 ## Features
 
@@ -123,14 +123,18 @@ async(function(){ if (!works) { }); print('broken'); } next();
 * `echoVar` - default 'print', name of function used to output strings
 * `asyncVar` - default '\u03BB', name of function used internally on async blocks
 * `nextVar` - default 'next', name of function to call when done with async block
+
 `data` object containing values to use in template execution
+
 `onprint(chunk)` - optional - function called for each chunk of output as it becomes ready
+
 `oncomplete(err, output)` function called when template has completed
 
 
 `stencil(options)` or `stencil.compile(options, string)` returns compiled function
 
 `options` template string or options, see above
+
 `string` - optional - if true, return compiled function as a string instead
 
 
