@@ -5,62 +5,53 @@ stencil is a templating engine designed by Andy VanWagoner
 to enable templates to run in an environment with asynchronous I/O,
 such as [node](http://nodejs.org), as well as in the browser.
 
-While there have been many other libraries with the same claims,
-all of the ones currently maintained use the mustache syntax,
-while this uses asp / erb / php style syntax.
+If ([ejs](https://github.com/visionmedia/ejs)) suites your needs,
+you should probably use that as it is better tested and is liekly
+more robust. However, stencil includes a few things that ejs
+does't in a stable release.
 
 ## Features
 
-  * Async nested templates
   * Async tag to ensure template is processed sequentially
   * Use the same template code both server and client side
-
-
-## Shared templates
-
-The motivator for stencil was to share templates between server and client code.
-The template can be used server side to generate a widget in the initial page load,
-and then the template can be included on the page to update the widget.
-
-The code to generate and update a widget can be the same file.
+  * Generate function as a string on server for use on the client
+  * Choose to include "use strict"; or with(data) {...}
+  * Line numbers in generated code match original template
 
 
 ## Usage - template code
 
 Templates are specified using php/asp syntax, with code inside special tags.
+There are also suffixes to the opening tag for print and async blocks.
 By default the tags are php-style:
 
 ```php
 <? javascript code here ?>
-```
-
-There are also suffixes to the opening tag for ouput, include, and async blocks.
-
-```php
 <?= 'Today is ' + (new Date()) /* result is html encoded and included in output */ ?>
 <?= 'hello', ' ', 'world' /* multiple results can be output */ ?>
 <?- '<em>Important</em>' /* This output won't be encoded */ ?>
 
-<?# 'child-template-id' /* result passed as id to include() */ ?>
-<?# { id:'child', async:'~' }, { custom:'data' } /* override options and data variables in child template */ ?>
-
-<?! setTimeout(next, 1000); /* functionally equivalent to php sleep(1) */ ?>
+<?! setTimeout(next, 1000); /* functionally equivalent to php sleep(1) */ !?>
 <?! someAsyncFunction(param1, function whendone(result) {
 		// do stuff with result
 		print(result);
 		next(); // continue processing the rest of the template
-	}); ?>
+	}); !?>
 ```
 
-Members of the data object are put in the scope of the template code:
+Members of the data object are optionally put in the scope of the template code:
 
 ```html
-<script type="text/template" id="template"><[CDATA[
+<script type="text/template" id="template"><
 	Why I don't teach English anymore:
 	<?= message ?>.
-]]></script>
+</script>
 <script>
-	stencil({ id:'template' }, { message:'The book is not on the table' },
+	stencil({
+		id: 'template',
+		src: document.getElementById('sub').innerHTML,
+		strict: false /* tells stencil to include a with(data) statement */
+	}, { message:'The book is not on the table' },
 		function(err, result) {
 			if (err) return console.log('The template failed to run.');
 			console.log('The template result was:' + result);
@@ -69,31 +60,78 @@ Members of the data object are put in the scope of the template code:
 </script>
 ```
 
+While nested templates are not built into the language it is easy to do so
+with a small amount of custom code:
+
+```javascript
+// client (no async done in sub)
+	<?- stencil(document.getElementById('sub').innerHTML, $) ?>
+// server (sub can have async blocks)
+	<?! fs.readFile('sub', 'utf8', function(err, tpl) {
+		if (err) return next(err);
+		stencil(tpl, $, next);
+	}); !?>
+```
+
 
 Important note:
 
-Unlike regular code tags, async tags cannot not include partial statements.
+Make careful to put async blocks end tags at the same nesting level as the start.
 All of the code inside will be wrapped into a function, and will be executed
 after the main block completes.
 
-This would not work:
-
 ```php
-<?! if (true) { ?>some output<? } ?>
+<?! if (works) { ?>a-okay<? } next(); !?>
+<?! if (!works) { !?>broken<? } next(); ?>
 ```
 
-Since compiled it would be similar to:
+Looks something like this after it is compiled:
 
 ```javascript
-async(function(next){ if (true) { }); print('some output'); }
+async(function(){ if (works) { print('a-okay'); } next(); });
+async(function(){ if (!works) { }); print('broken'); } next();
 ```
 
 ```php
-<? alert('This executes first'); ?>
-<?! alert('This executes third, after the main block completes'); next(); ?>
-<?! alert('fourth'); next(); ?>
-<? alert('second'); ?>
+<? alert('1'); print('1'); ?>
+<?! alert('3'); print('2'); next(); !?>
+<?! alert('4'); print('3'); next(); !?>
+<? alert('2'); print('4'); ?>
+// alerts 1 then 2 then 3 then 4
+// prints 1234
 ```
+
+
+## Usage
+
+`stencil(options, data, onprint, oncomplete)` returns output if no async blocks were used
+
+`options` can be a template string or an object with these properties:
+* `id` - usually the filename or uri, used for caching the resulting function for subsequent runs
+* `src` - the template string
+* `start` - default '<?', start tag in the template
+* `stop` - default '?>', stop tag in the template
+* `echo` - default '-', suffix for echoing result of the expression
+* `safe` - default '=', suffix for echoing result of the expression html encoded
+* `async` - default '!', suffix for async blocks, Output is still in document order
+* `strict` - default true, start function with `"use strict";` or wrap function in `with(dataVar) {}`
+* `dataVar` - default '$', name of object parameter containing data mambers to use in execution
+* `chunkVar` - default '\u03B9', name of function parameter called when each chunk is ready
+* `doneVar` - default '\u03DD', name of function parameter called when output is complete
+* `outputVar` - default '\u03A3', name of string used to hold the output
+* `safeVar` - default 'escape', name of function used to encode html characters
+* `echoVar` - default 'print', name of function used to output strings
+* `asyncVar` - default '\u03BB', name of function used internally on async blocks
+* `nextVar` - default 'next', name of function to call when done with async block
+`data` object containing values to use in template execution
+`onprint(chunk)` - optional - function called for each chunk of output as it becomes ready
+`oncomplete(err, output)` function called when template has completed
+
+
+`stencil(options)` or `stencil.compile(options, string)` returns compiled function
+
+`options` template string or options, see above
+`string` - optional - if true, return compiled function as a string instead
 
 
 ## Usage - client side
@@ -101,26 +139,14 @@ async(function(next){ if (true) { }); print('some output'); }
 ```html
 <script src="stencil.js"></script>
 <script type="text/template" id="dom_id">
-	<[CDATA[
 	... template code here ...
-	]]>
 </script>
 <script>
-	stencil('dom_id', { data:object }, function(err, result) {
+	stencil(document.getElementById('dom_id').innerHTML,
+		{ /*data*/ }, function(err, result) {
 		/* all done */ 
 		if (err) { /* you broke it */ return; }
 		/* use the result */
-	});
-
-	// or
-
-	stencil.fetch({ id:'dom_id' }, function(err, template) {
-		template = stencil.compile(template, { async:'~' });
-		template(
-			{ data:object },
-			function(data) { /* optional - use the data chunks */ },
-			function(err, result) { /* all done */ },
-		);
 	});
 </script>
 ```
@@ -131,12 +157,10 @@ async(function(next){ if (true) { }); print('some output'); }
 ```javascript
 var stencil = require('./stencil');
 
-stencil('/path/to/template', { data:object },
+stencil('Hello <?- $.whom ?>!', { whom:'World' },
 	function(data) { /* use the data chunks */ },
 	function(err, result) { /* all done */ }
 );
-
-// same variations apply as client side.
 ```
 
 
@@ -151,7 +175,6 @@ stencil({
 	stop:  '`',
 	echo:  'print',
 	safe:  'encode',
-	nest:  ' include this template:',
 	async: '@'
 }, data, function(err, result) {
 	// here's my result
@@ -165,61 +188,8 @@ stencil.defaults.stop  = '`';
 // template code:
 My pet is `if (hungry) { `hungry` } else { `sleepy` }`.
 His name is: `print pet.name`.
-He looks like: ` include this template: 'looks_like', pet `.
 `@my_async_function(function(result) { print(result); next(); });`
 the end.
-```
-
-
-## Usage - extras
-
-You can fetch templates synchronously, if you need to. The caveat here
-is that you cannot do anything asynchronous in your template, or
-you will only get the ouput up until the first asynchronous part. The setting
-really only makes includes happen synchronously.
-
-```javascript
-try { var result = stencil({ id:'id', sync_include:true }, data); }
-catch (err) { /* You broke it. */ }
-```
-
-Or if you have don't get the template by dom id, ajax call, (or by filename
-in node), you can pass in the 'fetch' option a function that retrieves
-the template text and has this signature: (stencil_options, next(error, text))
-
-
-You can also compile templates without a 'with' statement, by including a
-reference to uglify-js's parse function. This will improve the rendering
-performance, but is expensive at compile time.
-
-```javascript
-// fn does not use the 'with' statement, but still can't "use strict";
-var fn = stencil.compile(source, { parse:require('uglify-js').parser.parse });
-
-stencil.defaults.parse = require('uglify-js').parser.parse;
-stencil({ id:'id' }, function(err, result) {
-	// result achieved without 'with'
-});
-
-stencil.defaults.parse = function(){ return []; };
-stencil({ id:'id' }, function(err, result) {
-	// no 'with', but names were not properly identified, so the template
-	//  code would have to prefix data members with `context.`
-});
-```
-
-Removing the 'with' statement also means all variables in your template
-are declared with 'var', so you can't create implicit globals, and you
-won't get errors by using a context variable that wasn't passed in.
-
-```php
-<?
-	// data passed in does not contain either variable
-	bogus_var = 'bogus'; // won't implicitly create a global
-	if (maybe_var) { // won't throw an error
-		/* use maybe_var */
-	}
-?>
 ```
 
 

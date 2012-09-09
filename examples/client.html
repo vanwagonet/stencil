@@ -7,10 +7,11 @@
 	<div id="out"></div>
 	<script src="../stencil.js"></script>
 	<script id="template" type="text/template">
-	<![CDATA[
 		<div>
-			<?# 'nested' ?>
-			<?# 'nested', { msg: 'Custom data passed to child template' } ?>
+			<?! setTimeout(function(){ ?>
+				<?- include('nested', $); ?>
+			<? next(); }, 0) !?>
+			<?! print(include('nested', { msg: 'Custom data passed to child template' })); next(); !?>
 			<? var k = 0; /* only star comments allowed */ ?>
 			<table>
 			<? for (var i = 0; i < 1000; ++i, ++k) { ?>
@@ -26,40 +27,38 @@ unbroken by newline.
 			</pre>
 			<? /* some bad syntax ?> this is all commented out <? */ ?>
 		</div>
-	]]>
 	</script>
 	<script id="nested" type="text/template">
-		<![CDATA[<div><?= msg ?></div>]]>
+		<div><?= msg ?></div>
 	</script>
 	<script>
 		var out = document.getElementById('out'), // output div
 			done, init, cmpl, exec, wait, end, // timing vars
+			template, str = '', match,
 			start = (new Date()).getTime();
-
-		var match, str = '';
 
 		// initialize the template
 		init = (new Date()).getTime();
-		stencil.fetch({ id:'template' }, function(err, template){
-			template = stencil.compile(template, { id:'template' });
-			cmpl = (new Date()).getTime();
+		template = stencil.compile({
+			uri: 'template', strict: false, // use with($) not "use strict";
+			src: document.getElementById('template').innerHTML
+		});
+		cmpl = (new Date()).getTime();
 
-			// execute the template
-			template({
-				suffix:[ 'th', 'st', 'nd', 'rd', 'th' ],
-				msg:'Message in nested template'
-			}, function(data) {
-				str += data;
-			}, function(err, all) {
-				done = (new Date()).getTime();
-				match = all === str;
-				// make sure exec timing is done
-				if (exec) { output(); }
-			});
+		// execute the template
+		template({
+			suffix:[ 'th', 'st', 'nd', 'rd', 'th' ],
+			msg:'Message in nested template',
+			include: function(id, $) {
+				return stencil({ id:id, strict:false, src:document.getElementById(id).innerHTML }, $);
+			}
+		}, function(data) {
+			str += data;
+		}, function(err, all) {
 			exec = (new Date()).getTime();
-
-			// make sure complete timing is done
-			if (done) { output(); }
+			done = (new Date()).getTime();
+			match = all === str;
+			output();
 		});
 
 		function output() {
@@ -77,9 +76,6 @@ unbroken by newline.
 				'ms write: '    + (end  - wait) +
 				'ms total: '    + (done - start + end - wait) +
 				'ms <br/><br/> matches:' + match + out.innerHTML;
-
-			// don't execute twice
-			output = function(){};
 		}
 	</script>
 </body>

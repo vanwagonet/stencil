@@ -1,9 +1,9 @@
 {
 	"hello":"world",
-	"clicked":<?= t ?>,
+	"clicked":<?= $.t ?>,
 <?! setTimeout(function() {
-	print('"responded":', Date.now() - t, ',\n');
+	print('"responded":', Date.now() - $.t, ',\n');
 	next();
-}, 5000); ?>
-	"output-after-async-but-executed-before":<?= Date.now() - t ?>
+}, 5000); !?>
+	"output-after-async-but-executed-before":<?= Date.now() - $.t ?>
 }

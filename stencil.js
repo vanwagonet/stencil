@@ -1,145 +1,74 @@
-/*! Stencil Template v0.7.2
+/*! Stencil Template v0.8.0
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
 (function(global) {
 	"use strict";
 
-		// mortar between template chunks
-	var MT = '',   NEST = 'include', SAFE = 'escape',
-		NL = '\n', ECHO = 'print',   DATA = 'context',
-		CR = '\r', NEXT = 'next',    ASYNC = 'async',
-
-		PARAMS = [ DATA, ECHO, SAFE, NEXT ].join(),
-
-		ECHO_START = ',',  ECHO_DONE = ',',
-		SAFE_START = ',' + SAFE + '(',  SAFE_DONE = '),',
-		CODE_START = ');', CODE_DONE = ';' + ECHO + '(',
-
-		NEST_START  = ');' + ECHO + '.' + NEST + '(',
-		NEST_DONE   = ');' + ECHO + '(',
-		ASYNC_START = ');' + ECHO + '.' + ASYNC + '(function(){',
-		ASYNC_DONE  = '});' + ECHO + '(',
-		EXTRA = '""',  CALL_NEXT = NEXT + '();',
-
-		TAB_RE     = /\\t/g,          TAB_ESCAPED     = '\t', // use real tabs instead of escaped
-		NEWLINE_RE = /((\\r)?\\n)/g,  NEWLINE_ESCAPED = '$1",\n"', // properly encode newlines
-		TRAIL_RE   = /[;,](\s*)$/,    TRAIL_ESCAPED   = '$1', // fix trailing commas and semicolons
-
-		WITH_START = 'with(' + DATA + '){', WITH_END = '}'; // make data members "global"
-
-
-	/** Loads the template, and then fires a callback
-	 * with the error, if any, and the template result. **/
-	function stencil(o, vars, data, end) {
-		var result; o = stencil.options(o);
-		if (stencil.cache[o.id]) return stencil.cache[o.id](vars, data, end);
-		(o.fetch || stencil.fetch)(o, function(err, text) {
-			if (err) return (end || data)(err);
-			try { result = stencil.compile(text, o)(vars, data, end); }
-			catch (err) { (end || data)(err); }
-		});
-		return result; // just in case is was synchronous.
+	function stencil(o, vars, end) {
+		var result = stencil.compile(o);
+		if (arguments.length > 1) { result = result(vars, end); }
+		return result;
 	}
 
-	stencil.cache = {}; // cache resulting functions
-
-
-	/** Compiles the template text into a function. If the third param is true,
-	 * returns the function as a string for use with stencil.prepare. **/
-	stencil.compile = function(text, o, string) {
-		o = stencil.options(o);
-		var fn = translate(text, o);
-		if (string) {
-			fn = 'function(' + PARAMS + '){' + fn + '}';
-		} else {
-			fn += '\n//@ sourceURL=' + o.id;
-			fn = stencil.prepare(new Function(PARAMS, fn), o);
-		}
+	stencil.compile = function(o, string) {
+		var k, fn, d = stencil.defaults, params;
+		o = ('string' === typeof o) ? { src:o } : o || {};
+		if (!string && stencil.cache[o.id]) { return stencil.cache[o.id]; }
+		for (k in d) { if (!(k in o)) { o[k] = d[k]; } }
+		fn = translate(o); params = [ o.dataVar, o.chunkVar, o.doneVar ];
+		if (string) { return 'function(' + params + '){' + fn + '}'; }
+		fn = new Function(params, fn + (o.uri ? '\n//@ sourceURL=' + o.uri : ''));
+		if (o.id) { stencil.cache[o.id] = fn; }
 		return fn;
 	};
 
+	stencil.cache = {};
 
-	/** merges the defaults into the object provided */
-	stencil.options = function(o, defs) {
-		if ('string' === typeof o) o = { id:o };
-		o = o || {}; defs = defs || stencil.defaults;
-		for (var opt in defs) { o[opt] = o[opt] || defs[opt]; }
-		return o;
-	};
-
-
-	/** default options */
 	stencil.defaults = {
-		id:    null, /* Identifier for the template (filename, or dom id) */
+		uri:   '',   /* Filename or url */
+		src:   '',   /* Source template string */
 		start: '<?', /* Start tag in the template */
 		stop:  '?>', /* Stop tag in the template */
 		echo:  '-',  /* Suffix for echoing result of the expression */
 		safe:  '=',  /* Suffix for echoing result of the expression html encoded */
-		nest:  '#',  /* Suffix for including the template identified by the result of the expression */
-		async: '!',  /* Suffix for async blocks, after which any execution is paused, and only resumed by calling output.resume() */
-		sync_include: false, /* If true, nested templates will be fetched and rendered synchronously */
-		parse: null, /* A reference to parse-js or uglify-js's parser, used to kill the with statement */
-		fetch: null  /* A function that retrieves the template text. function(options, next(err, text))  */
+		async: '!',  /* Suffix for async blocks, Output is still in document order */
+
+		strict:    true,     /* start function with "use strict"; or wrap function in with */
+		dataVar:   '$',      /* name of object parameter containing data mambers to use in execution */
+		chunkVar:  '\u03B9', /* name of function parameter called when each chunk is ready */
+		doneVar:   '\u03DD', /* name of function parameter called when output is complete */
+		outputVar: '\u03A3', /* name of string used to hold the output */
+		safeVar:   'escape', /* name of function used to encode html characters */
+		echoVar:   'print',  /* name of function used to output strings */
+		asyncVar:  '\u03BB', /* name of function used internally on async blocks */
+		nextVar:   'next'    /* name of function to call when done with async block */
 	};
 
+	function translate(opts) {
+		var fn, src = opts.src, s, i = 0,
+			code, pre, post, inasyn = 0,
 
-	/** Loads the identified template **/
-	if (global.document && global.XMLHttpRequest) { // browser
-		stencil.fetch = function(o, next) {
-			var text;
-			if (text = document.getElementById(o.id)) { // get text from dom id
-				text = (text.value || text.innerHTML)
-					.replace(/^\s*<!\[CDATA\[\s*\r?\n?|\r?\n?\s*\]\]>\s*$/g, MT);
-				next(null, text); return text; // always synchronous
-			}
+			$ = opts.dataVar, out = opts.outputVar,
+			chunk = opts.chunkVar, done = opts.doneVar,
+			esc = opts.safeVar, echo = opts.echoVar,
+			asyn = opts.asyncVar, next = opts.nextVar,
 
-			text = new XMLHttpRequest(); // get input from url, only basic support.
-			text.onload = function() {
-				if (200 <= text.status && 300 > text.status) {
-					next(null, text = text.responseText);
-				} else { text.onerror(); }
-			};
-			text.onerror = function() { next(new Error('Could not find template '+o.id)); }
-			text.open('GET', o.id, !o.sync_include);
-			text.send();
-			return text; // if successful sync request, will be the text, otherwise the xhr object
-		};
-	} else { // assume node-like environment
-		stencil.fetch = function(o, next) {
-			var fs = require('fs'), text;
-			if (o.sync_include) {
-				text = fs.readFileSync(o.id, o.charset || 'utf-8');
-				next(null, text); return text;
-			} else {
-				fs.readFile(o.id, o.charset || 'utf-8', next);
-			}
-		};
-	}
-
-
-	/** @private convert template text to javascript code **/
-	function translate(src, opts) {
-		var s, i = 0, code, pre, post, // start index, end index, ...
-			fn = opts.parse ? MT : WITH_START, // resulting script
-			// cache vars used in loop
 			start = opts.start, startl = start.length,
 			stopt = opts.stop,  stopl  = stopt.length,
 			echot = opts.echo,  echol  = echot.length,
 			safet = opts.safe,  safel  = safet.length,
-			nest  = opts.nest,  nestl  = nest.length,
-			async = opts.async, asyncl = async.length;
+			asynct = opts.async, asyncl = asynct.length;
 
-		fn += CODE_DONE;
+		if (opts.strict) { fn = '"use strict";'; }
+		else { fn = 'with(' + $ + '){'; }
+		fn += out + '=';
 
 		while (i >= 0) {
 			// encode static chunk
 			s = i; i = src.indexOf(start, i);
-			if (s !== i) {
-				fn += JSON.stringify(i < 0 ? src.substr(s) : src.substring(s, i))
-					.replace(TAB_RE, TAB_ESCAPED)
-					.replace(NEWLINE_RE, NEWLINE_ESCAPED);
-			}
+			fn += JSON.stringify(i < 0 ? src.slice(s) : src.slice(s, i))
+				.replace(/\\t/g, '\t').replace(/((\\r)?\\n)/g, '$1"+\n"');
 
 			// check for next chunk
 			if (i < 0) { break; }
@@ -147,150 +76,87 @@
 			// wrap javascript chunk
 			s = (i += startl); i = src.indexOf(stopt, s);
 			if (src.substr(s, safel) === safet) { // safe echo chunk
-				s  += safel; pre = SAFE_START; post = SAFE_DONE;
+				s += safel; pre = '+'+esc+'('; post = ')+';
 			} else if (src.substr(s, echol) === echot) { // echo chunk
-				s  += echol; pre = ECHO_START; post = ECHO_DONE;
-			} else if (src.substr(s, nestl) === nest) { // nest template chunk
-				s  += nestl; pre = NEST_START; post = NEST_DONE;
-			} else if (src.substr(s, asyncl) === async) { // async funciton call chunk
-				s  += asyncl; pre = ASYNC_START; post = ASYNC_DONE;
-			} else { // regular code chunk
-				pre = CODE_START; post = CODE_DONE;
+				s += echol; pre = ';'+echo+'('; post = ');'+out+'+=';
+			} else {
+				if (src.substr(s, asyncl) === asynct) { // async funciton call chunk
+					s += asyncl; pre = ';'+asyn+'(function(){'; ++inasyn;
+				} else { // regular code chunk
+					pre = ';';
+				}
+				if ((i < 0 && inasyn) || src.substr(i-asyncl, asyncl) === asynct) {
+					post = '});'+out+'+='; --inasyn; i -= asyncl;
+				} else {
+					post = ';'+out+'+=';
+				}
 			}
-			code = (i < 0 ? src.substr(s) : src.substring(s, i))
-				.replace(TRAIL_RE, TRAIL_ESCAPED);
+			code = (i < 0 ? src.slice(s) : src.slice(s, i))
+				.replace(/[;,](\s*(\/\*.*?\*\/)?\s*)$/, '$1');
+			i = src.indexOf(stopt, i); // in case we back-tracked for async
 			fn += pre + code + post;
 			if (i >= 0) {
 				i += stopl;
 				// skip newline directly following close tag
-				if (src.charAt(i) === CR) { ++i; fn += CR; }
-				if (src.charAt(i) === NL) { ++i; fn += NL; }
+				if (src.charAt(i) === '\r') { ++i; fn += '\r'; }
+				if (src.charAt(i) === '\n') { ++i; fn += '\n'; }
 			} else {
-				fn += EXTRA;
+				fn += '""';
 			}
 		}
 
-		// callback to indicate completion
-		fn += CODE_START + CALL_NEXT;
-
-		if (opts.parse) {
-			fn = without(opts, fn);
-		} else {
-			fn += WITH_END;
-		}
+		fn += ';\n\n'+next+'();\nreturn ' + out + ';';
+		if (!opts.strict) { fn += '\n}'; }
+		fn += '\n\nvar '+out+';\n' +
+		'function '+echo+'() {\n' +
+		'	'+out+' += Array.prototype.join.call(arguments, "");\n' +
+		'}\n\n' +
+		'function '+esc+'() {\n' +
+		'	return Array.prototype.join.call(arguments, "")\n' +
+		'		.replace(/&/g, "&amp;")\n' +
+		'		.replace(/</g, "&lt;")\n' +
+		'		.replace(/>/g, "&gt;")\n' +
+		'		.replace(/"/g, "&quot;")\n' +
+		'		.replace(/\'/g, "&#39;");\n' +
+		'}\n\n' +
+		'function '+asyn+'(fn) {\n' +
+		'	fn.buffer = '+out+'; '+out+' = "";\n' +
+		'	('+asyn+'.q || ('+asyn+'.q = [])).push(fn);\n' +
+		'}\n\n' +
+		'function '+next+'(err, str) {\n' +
+		'	if (!'+done+') { '+done+' = '+chunk+' || function(){}; '+chunk+' = function(){}; }\n' +
+		'	if (!'+chunk+') { '+chunk+' = function(){}; }\n' +
+		'	if (err) { return '+done+'(err); }\n' +
+		'	if (str) { '+out+' += str; }\n' +
+		'	'+asyn+'.result = '+asyn+'.result || "";\n\n' +
+		'	var fn = ('+asyn+'.q || []).shift();\n' +
+		'	if (!fn) {\n' +
+		'		if ('+asyn+'.started) { '+out+' += '+asyn+'.end || ""; }\n' +
+		'		if ('+out+') { '+chunk+'('+out+'); }\n' +
+		'		return '+done+'(null, '+out+' = ('+asyn+'.result += '+out+'));\n' +
+		'	}\n' +
+		'	if ('+asyn+'.started) {\n' +
+		'		'+out+' += fn.buffer;\n' +
+		'		if ('+out+') { '+chunk+'('+out+'); }\n' +
+		'		'+asyn+'.result += '+out+'; '+out+' = "";\n' +
+		'	} else {\n' +
+		'		'+asyn+'.started = true;\n' +
+		'		'+asyn+'.end = '+out+'; '+out+' = "";\n' +
+		'		'+asyn+'.result = fn.buffer;\n' +
+		'		if ('+asyn+'.result) { '+chunk+'('+asyn+'.result); }\n' +
+		'	}\n' +
+		'	return fn();\n' +
+		'}\n';
 
 		return fn;
 	}
 
-
-	/** @private Uses parse-js to compile a version of the template that avoids the 'with' statement. */
-	function without(opts, fn) {
-		opts = stencil.options(opts);
-		var names = {}, declare = [], define = [], name, ast,
-			whitelist = [ ECHO, SAFE, DATA, NEXT, 'this' ];
-
-		try { ast = opts.parse(fn); }
-		catch (err) { return WITH_START + fn + WITH_END; }
-
-		(function findnames(ast) {
-			if (!ast) return;
-			if ('name' === ast[0]) return names[ast[1]] = true;
-			if ('object' === typeof ast) {
-				for (var i = 0; i < ast.length; ++i) {
-					findnames(ast[i]);
-				}
-			}
-		})(ast);
-		for (name in names) {
-			if (~whitelist.indexOf(name)) continue;
-			declare.push(name);
-			define.push(name + '=' + DATA + '.' + name + '||this.' + name);
-		}
-		if (declare.length) {
-			fn = 'd()' + fn +
-				'\nvar ' + declare.join() + ';' +
-				'\nfunction d(){\n' + define.join(';\n') + ';\n}';
-		}
-		return fn;
-	};
-
-
-	/** wrap the compiled function to make sure env is set up properly. **/
-	stencil.prepare = function(fn, opts) {
-		if ('string' === typeof fn) {
-			fn = fn.replace(/^\s*function[^\{]+\{|\}\s*$/g, '');
-			fn = new Function(PARAMS, fn);
-		}
-		opts = stencil.options(opts);
-		function template(vars, data, end) {
-			if (!end) { end = data; data = null; }
-			if (!end) { end = function(err) { if (err) throw err; }; }
-
-			function print() {
-				var text = Array.prototype.join.call(arguments, MT),
-					last = print.q[print.q.length - 1];
-				if (fn !== last && fn === print.q[0]) {
-					last.buffer += text;
-				} else {
-					print.result += text;
-					if (data && text) data(text);
-				}
-			}
-
-			function encode() {
-				return Array.prototype.join.call(arguments, MT)
-					.replace(/&/g, '&amp;')
-					.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-					.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-			};
-
-			print[NEST] = function(o, v) {
-				print[ASYNC](function() {
-					o = stencil.options(o, opts);
-					v = stencil.options(v, vars);
-					stencil(o, v, print, function(err) {
-						return err ? end(err, result) : next();
-					});
-				});
-			};
-
-			print[ASYNC] = function(async) {
-				async.buffer = MT;
-				async.index = print.q[print.q.length - 1].index + 1;
-				print.q.push(async);
-			};
-
-			function next(err) {
-				if (err) return end(err);
-				var first = print.q.shift();
-				if (first.buffer) {
-					print.result += first.buffer;
-					if (data) data(first.buffer);
-				}
-				if (print.q.length) { print.q[0](); }
-				else { end(null, print.result); }
-			};
-
-			print.result = MT;
-			print.q = [ fn ];
-
-			fn.call(global, vars || {}, print, encode, next);
-
-			return print.result; // just in case is was synchronous.
-		}
-		template.inner = fn;
-		return stencil.cache[opts.id] = template;
-	};
-
-
-	// export the stencil function
-	if ('undefined' !== typeof exports) {
-		if ('undefined' !== typeof module && module.exports) {
-			exports = module.exports = stencil;
-		}
-		exports.stencil = stencil;
-	} else {
+	if ('undefined' === typeof exports) {
 		global.stencil = stencil;
+	} else if ('undefined' !== typeof module && module.exports) {
+		exports = module.exports = stencil;
+	} else {
+		exports.stencil = stencil;
 	}
 })(this);
 
