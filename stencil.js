@@ -93,7 +93,7 @@
 			}
 			code = (i < 0 ? src.slice(s) : src.slice(s, i))
 				.replace(/[;,](\s*(\/\*.*?\*\/)?\s*)$/, '$1');
-			i = src.indexOf(stopt, i); // in case we back-tracked for async
+			if (i > 0) { i = src.indexOf(stopt, i); } // in case we back-tracked for async
 			fn += pre + code + post;
 			if (i >= 0) {
 				i += stopl;
