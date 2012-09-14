@@ -1,33 +1,36 @@
 <!DOCTYPE html>
 <html>
+
   <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Stencil : Async JavaScript Templating" />
 
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>Stencil by thetalecrafter</title>
+    <title>Stencil</title>
   </head>
 
   <body>
 
-    <header>
-      <div class="container">
-        <h1>Stencil</h1>
-        <h2>Async JavaScript Templating</h2>
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/thetalecrafter/stencil">View on GitHub</a>
 
-        <section id="downloads">
-          <a href="https://github.com/thetalecrafter/stencil/zipball/master" class="btn">Download as .zip</a>
-          <a href="https://github.com/thetalecrafter/stencil/tarball/master" class="btn">Download as .tar.gz</a>
-          <a href="https://github.com/thetalecrafter/stencil" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
-        </section>
-      </div>
-    </header>
+          <h1 id="project_title">Stencil</h1>
+          <h2 id="project_tagline">Async JavaScript Templating</h2>
 
-    <div class="container">
-      <section id="main_content">
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/thetalecrafter/stencil/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/thetalecrafter/stencil/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
         <h1>stencil</h1>
 
 <p>stencil is a templating engine designed by Andy VanWagoner
@@ -35,169 +38,198 @@
 to enable templates to run in an environment with asynchronous I/O,
 such as <a href="http://nodejs.org">node</a>, as well as in the browser.</p>
 
+<p>If <a href="https://github.com/visionmedia/ejs">ejs</a> suites your needs,
+you should probably use that as it is better tested and is likely
+more robust. However, stencil includes a few things that ejs
+does't yet.</p>
+
 <h2>Features</h2>
 
 <ul>
-<li>Async nested templates</li>
 <li>Async tag to ensure template is processed sequentially</li>
 <li>Use the same template code both server and client side</li>
-</ul><h2>Shared templates</h2>
-
-<p>The motivator for stencil was to share templates between server and client code.
-The template can be used server side to generate a widget in the initial page load,
-and then the template can be included on the page to update the widget.</p>
-
-<p>The code to generate and update a widget can be the same file.</p>
-
-<h2>Usage - template code</h2>
+<li>Generate function as a string on server for use on the client</li>
+<li>Choose to include "use strict"; or with(data) {...}</li>
+<li>Line numbers in generated code match original template</li>
+</ul><h2>Usage - template code</h2>
 
 <p>Templates are specified using php/asp syntax, with code inside special tags.
+There are also suffixes to the opening tag for print and async blocks.
 By default the tags are php-style:</p>
 
-<div class="highlight">
-<pre><span class="cp">&lt;?</span> <span class="nx">javascript</span> <span class="nx">code</span> <span class="nx">here</span> <span class="cp">?&gt;</span><span class="x"></span>
-</pre>
-</div>
+<div class="highlight"><pre><span class="o">&lt;?</span> <span class="nx">javascript</span> <span class="nx">code</span> <span class="nx">here</span> <span class="cp">?&gt;</span><span class="x"></span>
+<span class="cp">&lt;?</span><span class="o">=</span> <span class="s1">'Today is '</span> <span class="o">+</span> <span class="p">(</span><span class="k">new</span> <span class="nx">Date</span><span class="p">())</span> <span class="cm">/* result is html encoded and included in output */</span> <span class="cp">?&gt;</span><span class="x"></span>
+<span class="cp">&lt;?</span><span class="o">=</span> <span class="s1">'hello'</span><span class="p">,</span> <span class="s1">' '</span><span class="p">,</span> <span class="s1">'world'</span> <span class="cm">/* multiple results can be output */</span> <span class="cp">?&gt;</span><span class="x"></span>
+<span class="cp">&lt;?</span><span class="o">-</span> <span class="s1">'&lt;em&gt;Important&lt;/em&gt;'</span> <span class="cm">/* This output won't be encoded */</span> <span class="cp">?&gt;</span><span class="x"></span>
 
-
-<p>There are also suffixes to the opening tag for ouput, include, and async blocks.</p>
-
-<div class="highlight">
-<pre><span class="cp">&lt;?</span><span class="o">=</span> <span class="s1">'Today is '</span> <span class="o">+</span> <span class="p">(</span><span class="k">new</span> <span class="nx">Date</span><span class="p">())</span> <span class="c1">// result included in output ?&gt;</span>
-<span class="o">&lt;?=</span> <span class="s1">'hello'</span><span class="p">,</span> <span class="s1">' '</span><span class="p">,</span> <span class="s1">'world'</span> <span class="c1">// multiple results can be output ?&gt;</span>
-
-<span class="o">&lt;?</span><span class="c1"># 'child-template-id' // result passed as id to include() ?&gt;</span>
-<span class="o">&lt;?</span><span class="c1"># 'child', { custom: 'data' } // a separate data object in child ?&gt;</span>
-
-<span class="o">&lt;?!</span> <span class="nx">setTimeout</span><span class="p">(</span><span class="nx">output</span><span class="o">.</span><span class="nx">resume</span><span class="p">,</span> <span class="mi">1000</span><span class="p">);</span> <span class="c1">// functionally equivalent to php usleep(1000) ?&gt;</span>
+<span class="cp">&lt;?</span><span class="o">!</span> <span class="nx">setTimeout</span><span class="p">(</span><span class="nb">next</span><span class="p">,</span> <span class="mi">1000</span><span class="p">);</span> <span class="cm">/* functionally equivalent to php sleep(1) */</span> <span class="o">!?&gt;</span>
 <span class="o">&lt;?!</span> <span class="nx">someAsyncFunction</span><span class="p">(</span><span class="nx">param1</span><span class="p">,</span> <span class="k">function</span> <span class="nf">whendone</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
         <span class="c1">// do stuff with result</span>
-        <span class="nx">output</span><span class="o">.</span><span class="k">echo</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span>
-        <span class="nx">output</span><span class="o">.</span><span class="nx">resume</span><span class="p">();</span> <span class="c1">// continue processing the rest of the template</span>
-    <span class="p">});</span> <span class="cp">?&gt;</span><span class="x"></span>
-</pre>
-</div>
+        <span class="k">print</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span>
+        <span class="nb">next</span><span class="p">();</span> <span class="c1">// continue processing the rest of the template</span>
+    <span class="p">});</span> <span class="o">!?&gt;</span>
+</pre></div>
 
+<p>Members of the data object are optionally put in the scope of the template code:</p>
 
-<p>Members of the data object passed to exec are in the scope of the template code:</p>
-
-<div class="highlight">
-<pre><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/template"</span> <span class="na">id=</span><span class="s">"template"</span><span class="nt">&gt;</span><span class="o">&lt;</span><span class="p">[</span><span class="nx">CDATA</span><span class="p">[</span>
+<div class="highlight"><pre><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/template"</span> <span class="na">id=</span><span class="s">"template"</span><span class="nt">&gt;</span><span class="o">&lt;</span>
     <span class="nx">Why</span> <span class="nx">I</span> <span class="nx">don</span><span class="err">'</span><span class="nx">t</span> <span class="nx">teach</span> <span class="nx">English</span> <span class="nx">anymore</span><span class="o">:</span>
     <span class="o">&lt;?=</span> <span class="nx">message</span> <span class="o">?&gt;</span><span class="p">.</span>
-<span class="p">]]</span><span class="o">&gt;</span><span class="nt">&lt;/script&gt;</span>
-<span class="nt">&lt;script&gt;</span>
-    <span class="p">(</span><span class="k">new</span> <span class="nx">Template</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span><span class="s1">'template'</span> <span class="p">})).</span><span class="nx">exec</span><span class="p">({</span>
-        <span class="nx">message</span><span class="o">:</span> <span class="s1">'The book is not on the table'</span>
-    <span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
-        <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'it didn\'t work'</span><span class="p">);</span> <span class="k">return</span><span class="p">;</span> <span class="p">}</span>
-        <span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">innerHTML</span> <span class="o">+=</span> <span class="nx">result</span><span class="p">;</span>
-    <span class="p">});</span>
 <span class="nt">&lt;/script&gt;</span>
-</pre>
-</div>
+<span class="nt">&lt;script&gt;</span>
+    <span class="nx">stencil</span><span class="p">({</span>
+        <span class="nx">id</span><span class="o">:</span> <span class="s1">'template'</span><span class="p">,</span>
+        <span class="nx">src</span><span class="o">:</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">'sub'</span><span class="p">).</span><span class="nx">innerHTML</span><span class="p">,</span>
+        <span class="nx">strict</span><span class="o">:</span> <span class="kc">false</span> <span class="cm">/* tells stencil to include a with(data) statement */</span>
+    <span class="p">},</span> <span class="p">{</span> <span class="nx">message</span><span class="o">:</span><span class="s1">'The book is not on the table'</span> <span class="p">},</span>
+        <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="k">return</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'The template failed to run.'</span><span class="p">);</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'The template result was:'</span> <span class="o">+</span> <span class="nx">result</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">);</span>
+<span class="nt">&lt;/script&gt;</span>
+</pre></div>
 
+<p>While nested templates are not built into the language it is easy to do so
+with a small amount of custom code:</p>
 
-<p>Some notes to remember:</p>
+<div class="highlight"><pre><span class="c1">// client (no async done in sub)</span>
+    <span class="o">&lt;?-</span> <span class="nx">stencil</span><span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">'sub'</span><span class="p">).</span><span class="nx">innerHTML</span><span class="p">,</span> <span class="nx">$</span><span class="p">)</span> <span class="o">?&gt;</span>
+<span class="c1">// server (sub can have async blocks)</span>
+    <span class="o">&lt;?!</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span><span class="p">(</span><span class="s1">'sub'</span><span class="p">,</span> <span class="s1">'utf8'</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">tpl</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="k">return</span> <span class="nx">next</span><span class="p">(</span><span class="nx">err</span><span class="p">);</span>
+        <span class="nx">stencil</span><span class="p">(</span><span class="nx">tpl</span><span class="p">,</span> <span class="nx">$</span><span class="p">,</span> <span class="nx">next</span><span class="p">);</span>
+    <span class="p">});</span> <span class="o">!?&gt;</span>
+</pre></div>
 
-<ol>
-<li>The code in the output and include tags must be a comma separated list of expressions.</li>
-<li>If only one expression is in the include tag,
-the parent template's data object is passed to the child template.</li>
-<li>Otherwise the second expression in the include tag will be passed to the child template as data.</li>
-<li>Additional expressions in the include tag will be ignored.</li>
-<li>Unlike regular code tags, async tags cannot not include partial statements.
-All of the code inside will be wrapped into a function.
-All of the code following will also be wrapped into a function.</li>
-</ol><p>This would not work:</p>
+<p>Important note:</p>
 
-<div class="highlight">
-<pre><span class="cp">&lt;?</span><span class="o">!</span> <span class="k">if</span> <span class="p">(</span><span class="k">true</span><span class="p">)</span> <span class="p">{</span> <span class="cp">?&gt;</span><span class="x">some output</span><span class="cp">&lt;?</span> <span class="p">}</span> <span class="cp">?&gt;</span><span class="x"></span>
-</pre>
-</div>
+<p>Make careful to put async blocks end tags at the same nesting level as the start.
+All of the code inside will be wrapped into a function, and will be executed
+after the main block completes.</p>
 
+<div class="highlight"><pre><span class="o">&lt;?!</span> <span class="k">if</span> <span class="p">(</span><span class="nx">works</span><span class="p">)</span> <span class="p">{</span> <span class="cp">?&gt;</span><span class="x">a-okay</span><span class="cp">&lt;?</span> <span class="p">}</span> <span class="nb">next</span><span class="p">();</span> <span class="o">!?&gt;</span>
+<span class="o">&lt;?!</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">works</span><span class="p">)</span> <span class="p">{</span> <span class="o">!?&gt;</span><span class="nx">broken</span><span class="o">&lt;?</span> <span class="p">}</span> <span class="nb">next</span><span class="p">();</span> <span class="cp">?&gt;</span><span class="x"></span>
+</pre></div>
 
-<p>Since compiled it would be similar to:</p>
+<p>Looks something like this after it is compiled:</p>
 
-<div class="highlight">
-<pre><span class="p">(</span><span class="kd">function</span><span class="p">(){</span> <span class="k">if</span> <span class="p">(</span><span class="kc">true</span><span class="p">)</span> <span class="p">{</span> <span class="p">})(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="nx">output</span><span class="p">.</span><span class="nx">echo</span><span class="p">(</span><span class="s1">'some output'</span><span class="p">);</span> <span class="p">}</span> <span class="p">});</span>
-</pre>
-</div>
+<div class="highlight"><pre><span class="nx">async</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span> <span class="k">if</span> <span class="p">(</span><span class="nx">works</span><span class="p">)</span> <span class="p">{</span> <span class="nx">print</span><span class="p">(</span><span class="s1">'a-okay'</span><span class="p">);</span> <span class="p">}</span> <span class="nx">next</span><span class="p">();</span> <span class="p">});</span>
+<span class="nx">async</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span> <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">works</span><span class="p">)</span> <span class="p">{</span> <span class="p">});</span> <span class="nx">print</span><span class="p">(</span><span class="s1">'broken'</span><span class="p">);</span> <span class="p">}</span> <span class="nx">next</span><span class="p">();</span>
+</pre></div>
 
+<div class="highlight"><pre><span class="o">&lt;?</span> <span class="nx">alert</span><span class="p">(</span><span class="s1">'1'</span><span class="p">);</span> <span class="k">print</span><span class="p">(</span><span class="s1">'1'</span><span class="p">);</span> <span class="cp">?&gt;</span><span class="x"></span>
+<span class="cp">&lt;?</span><span class="o">!</span> <span class="nx">alert</span><span class="p">(</span><span class="s1">'3'</span><span class="p">);</span> <span class="k">print</span><span class="p">(</span><span class="s1">'2'</span><span class="p">);</span> <span class="nb">next</span><span class="p">();</span> <span class="o">!?&gt;</span>
+<span class="o">&lt;?!</span> <span class="nx">alert</span><span class="p">(</span><span class="s1">'4'</span><span class="p">);</span> <span class="k">print</span><span class="p">(</span><span class="s1">'3'</span><span class="p">);</span> <span class="nb">next</span><span class="p">();</span> <span class="o">!?&gt;</span>
+<span class="o">&lt;?</span> <span class="nx">alert</span><span class="p">(</span><span class="s1">'2'</span><span class="p">);</span> <span class="k">print</span><span class="p">(</span><span class="s1">'4'</span><span class="p">);</span> <span class="cp">?&gt;</span><span class="x"></span>
+<span class="x">// alerts 1 then 2 then 3 then 4</span>
+<span class="x">// prints 1234</span>
+</pre></div>
+
+<h2>Usage</h2>
+
+<p><code>stencil(options, data, onprint, oncomplete)</code> returns output if no async blocks were used</p>
+
+<p><code>options</code> can be a template string or an object with these properties:</p>
+
+<ul>
+<li>
+<code>id</code> - usually the filename or uri, used for caching the resulting function for subsequent runs</li>
+<li>
+<code>src</code> - the template string</li>
+<li>
+<code>start</code> - default '&lt;?', start tag in the template</li>
+<li>
+<code>stop</code> - default '?&gt;', stop tag in the template</li>
+<li>
+<code>echo</code> - default '-', suffix for echoing result of the expression</li>
+<li>
+<code>safe</code> - default '=', suffix for echoing result of the expression html encoded</li>
+<li>
+<code>async</code> - default '!', suffix for async blocks, Output is still in document order</li>
+<li>
+<code>strict</code> - default true, start function with <code>"use strict";</code> or wrap function in <code>with(dataVar) {}</code>
+</li>
+<li>
+<code>dataVar</code> - default '$', name of object parameter containing data mambers to use in execution</li>
+<li>
+<code>chunkVar</code> - default '\u03B9', name of function parameter called when each chunk is ready</li>
+<li>
+<code>doneVar</code> - default '\u03DD', name of function parameter called when output is complete</li>
+<li>
+<code>outputVar</code> - default '\u03A3', name of string used to hold the output</li>
+<li>
+<code>safeVar</code> - default 'escape', name of function used to encode html characters</li>
+<li>
+<code>echoVar</code> - default 'print', name of function used to output strings</li>
+<li>
+<code>asyncVar</code> - default '\u03BB', name of function used internally on async blocks</li>
+<li>
+<code>nextVar</code> - default 'next', name of function to call when done with async block</li>
+</ul><p><code>data</code> object containing values to use in template execution</p>
+
+<p><code>onprint(chunk)</code> - optional - function called for each chunk of output as it becomes ready</p>
+
+<p><code>oncomplete(err, output)</code> function called when template has completed</p>
+
+<p><code>stencil(options)</code> or <code>stencil.compile(options, string)</code> returns compiled function</p>
+
+<p><code>options</code> template string or options, see above</p>
+
+<p><code>string</code> - optional - if true, return compiled function as a string instead</p>
 
 <h2>Usage - client side</h2>
 
-<div class="highlight">
-<pre><span class="nt">&lt;script </span><span class="na">src=</span><span class="s">"Template.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
+<div class="highlight"><pre><span class="nt">&lt;script </span><span class="na">src=</span><span class="s">"stencil.js"</span><span class="nt">&gt;&lt;/script&gt;</span>
 <span class="nt">&lt;script </span><span class="na">type=</span><span class="s">"text/template"</span> <span class="na">id=</span><span class="s">"dom_id"</span><span class="nt">&gt;</span>
-    <span class="o">&lt;</span><span class="p">[</span><span class="nx">CDATA</span><span class="p">[</span>
     <span class="p">...</span> <span class="nx">template</span> <span class="nx">code</span> <span class="nx">here</span> <span class="p">...</span>
-    <span class="p">]]</span><span class="o">&gt;</span>
 <span class="nt">&lt;/script&gt;</span>
 <span class="nt">&lt;script&gt;</span>
-    <span class="p">(</span><span class="k">new</span> <span class="nx">Template</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span><span class="s1">'dom_id'</span> <span class="p">}).</span><span class="nx">exec</span><span class="p">({</span> <span class="nx">data</span><span class="o">:</span><span class="nx">object</span> <span class="p">},</span> <span class="p">{</span>
-        <span class="nx">onerror</span><span class="o">:</span><span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* you broke it */</span> <span class="p">}</span>
-        <span class="nx">ondata</span><span class="o">:</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* use the data chunks */</span> <span class="p">}</span>
-        <span class="nx">onend</span><span class="o">:</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="cm">/* all done */</span> <span class="p">}</span>
-    <span class="p">});</span>
-
-    <span class="c1">// or</span>
-
-    <span class="p">(</span><span class="k">new</span> <span class="nx">Template</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span><span class="s1">'dom_id'</span> <span class="p">}).</span><span class="nx">exec</span><span class="p">({</span> <span class="nx">data</span><span class="o">:</span><span class="nx">object</span> <span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">stencil</span><span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">'dom_id'</span><span class="p">).</span><span class="nx">innerHTML</span><span class="p">,</span>
+        <span class="p">{</span> <span class="cm">/*data*/</span> <span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
         <span class="cm">/* all done */</span> 
         <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* you broke it */</span> <span class="k">return</span><span class="p">;</span> <span class="p">}</span>
         <span class="cm">/* use the result */</span>
     <span class="p">});</span>
 <span class="nt">&lt;/script&gt;</span>
-</pre>
-</div>
-
+</pre></div>
 
 <h2>Usage - server side</h2>
 
-<div class="highlight">
-<pre><span class="kd">var</span> <span class="nx">Template</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">'./Template'</span><span class="p">).</span><span class="nx">Template</span><span class="p">;</span>
+<div class="highlight"><pre><span class="kd">var</span> <span class="nx">stencil</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">'./stencil'</span><span class="p">);</span>
 
-<span class="p">(</span><span class="k">new</span> <span class="nx">Template</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span><span class="s1">'/path/to/template'</span> <span class="p">}).</span><span class="nx">exec</span><span class="p">({</span> <span class="nx">data</span><span class="o">:</span><span class="nx">object</span> <span class="p">},</span> <span class="p">{</span>
-    <span class="nx">onerror</span><span class="o">:</span><span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* you broke it */</span> <span class="p">}</span>
-    <span class="nx">ondata</span><span class="o">:</span><span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* use the data chunks */</span> <span class="p">}</span>
-    <span class="nx">onend</span><span class="o">:</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span> <span class="cm">/* all done */</span> <span class="p">}</span>
-<span class="p">});</span>
-
-<span class="c1">// or</span>
-
-<span class="p">(</span><span class="k">new</span> <span class="nx">Template</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span><span class="s1">'/path/to/template'</span> <span class="p">}).</span><span class="nx">exec</span><span class="p">({</span> <span class="nx">data</span><span class="o">:</span><span class="nx">object</span> <span class="p">},</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
-    <span class="cm">/* all done */</span> 
-    <span class="k">if</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* you broke it */</span> <span class="k">return</span><span class="p">;</span> <span class="p">}</span>
-    <span class="cm">/* use the result */</span>
-<span class="p">});</span>
-</pre>
-</div>
-
+<span class="nx">stencil</span><span class="p">(</span><span class="s1">'Hello &lt;?- $.whom ?&gt;!'</span><span class="p">,</span> <span class="p">{</span> <span class="nx">whom</span><span class="o">:</span><span class="s1">'World'</span> <span class="p">},</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* use the data chunks */</span> <span class="p">},</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* all done */</span> <span class="p">}</span>
+<span class="p">);</span>
+</pre></div>
 
 <h2>Usage - custom tags</h2>
 
-<div class="highlight">
-<pre><span class="c1">// set for all templates</span>
-<span class="c1">// Template.prototype.start = ...</span>
+<div class="highlight"><pre>
+<span class="c1">// override defaults for this template</span>
+<span class="nx">stencil</span><span class="p">({</span>
+    <span class="nx">id</span><span class="o">:</span>    <span class="nx">id</span><span class="p">,</span>
+    <span class="nx">start</span><span class="o">:</span> <span class="s1">'`'</span><span class="p">,</span>
+    <span class="nx">stop</span><span class="o">:</span>  <span class="s1">'`'</span><span class="p">,</span>
+    <span class="nx">echo</span><span class="o">:</span>  <span class="s1">'print'</span><span class="p">,</span>
+    <span class="nx">safe</span><span class="o">:</span>  <span class="s1">'encode'</span><span class="p">,</span>
+    <span class="nx">async</span><span class="o">:</span> <span class="s1">'@'</span>
+<span class="p">},</span> <span class="nx">data</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// here's my result</span>
+<span class="p">});</span>
 
-<span class="c1">// set on a particular template</span>
-<span class="kd">var</span> <span class="nx">t</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Template</span><span class="p">({</span> <span class="nx">id</span><span class="o">:</span><span class="nx">id</span> <span class="p">});</span>
-<span class="nx">t</span><span class="p">.</span><span class="nx">start</span> <span class="o">=</span> <span class="s1">'`'</span><span class="p">;</span>
-<span class="nx">t</span><span class="p">.</span><span class="nx">stop</span>  <span class="o">=</span> <span class="s1">'`'</span><span class="p">;</span>
-<span class="nx">t</span><span class="p">.</span><span class="nx">echo</span>  <span class="o">=</span> <span class="s1">'print'</span><span class="p">;</span>
-<span class="nx">t</span><span class="p">.</span><span class="nx">nest</span>  <span class="o">=</span> <span class="s1">' include this template:'</span><span class="p">;</span>
-<span class="nx">t</span><span class="p">.</span><span class="nx">async</span> <span class="o">=</span> <span class="s1">'@'</span><span class="p">;</span>
+<span class="c1">// or for all templates</span>
+<span class="nx">stencil</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">start</span> <span class="o">=</span> <span class="s1">'`'</span><span class="p">;</span>
+<span class="nx">stencil</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">stop</span>  <span class="o">=</span> <span class="s1">'`'</span><span class="p">;</span>
+<span class="p">...</span>
 
 <span class="c1">// template code:</span>
 <span class="nx">My</span> <span class="nx">pet</span> <span class="nx">is</span> <span class="err">`</span><span class="k">if</span> <span class="p">(</span><span class="nx">hungry</span><span class="p">)</span> <span class="p">{</span> <span class="err">`</span><span class="nx">hungry</span><span class="err">`</span> <span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="err">`</span><span class="nx">sleepy</span><span class="err">`</span> <span class="p">}</span><span class="err">`</span><span class="p">.</span>
 <span class="nx">His</span> <span class="nx">name</span> <span class="nx">is</span><span class="o">:</span> <span class="err">`</span><span class="nx">print</span> <span class="nx">pet</span><span class="p">.</span><span class="nx">name</span><span class="err">`</span><span class="p">.</span>
-<span class="nx">He</span> <span class="nx">looks</span> <span class="nx">like</span><span class="o">:</span> <span class="err">`</span> <span class="nx">include</span> <span class="k">this</span> <span class="nx">template</span><span class="o">:</span> <span class="s1">'looks_like'</span><span class="p">,</span> <span class="nx">pet</span> <span class="err">`</span><span class="p">.</span>
-<span class="err">`@</span><span class="nx">my_async_function</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="p">{</span> <span class="nx">output</span><span class="p">.</span><span class="nx">echo</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span> <span class="nx">output</span><span class="p">.</span><span class="nx">resume</span><span class="p">();</span> <span class="p">});</span><span class="err">`</span>
+<span class="err">`@</span><span class="nx">my_async_function</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="p">{</span> <span class="nx">print</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span> <span class="nx">next</span><span class="p">();</span> <span class="p">});</span><span class="err">`</span>
 <span class="nx">the</span> <span class="nx">end</span><span class="p">.</span>
-</pre>
-</div>
-
+</pre></div>
 
 <h2>License</h2>
 
@@ -226,6 +258,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
       </section>
     </div>
 
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Stencil maintained by <a href="https://github.com/thetalecrafter">thetalecrafter</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
     
+
   </body>
 </html>
