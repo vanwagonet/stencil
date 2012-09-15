@@ -107,46 +107,59 @@
 
 		fn += ';\n\n'+next+'();\nreturn ' + out + ';';
 		if (!opts.strict) { fn += '\n}'; }
-		fn += '\n\nvar '+out+';\n' +
-		'function '+echo+'() {\n' +
-		'	'+out+' += Array.prototype.join.call(arguments, "");\n' +
-		'}\n\n' +
-		'function '+esc+'() {\n' +
-		'	return Array.prototype.join.call(arguments, "")\n' +
-		'		.replace(/&/g, "&amp;")\n' +
-		'		.replace(/</g, "&lt;")\n' +
-		'		.replace(/>/g, "&gt;")\n' +
-		'		.replace(/"/g, "&quot;")\n' +
-		'		.replace(/\'/g, "&#39;");\n' +
-		'}\n\n' +
-		'function '+asyn+'(fn) {\n' +
-		'	fn.buffer = '+out+'; '+out+' = "";\n' +
-		'	('+asyn+'.q || ('+asyn+'.q = [])).push(fn);\n' +
-		'}\n\n' +
-		'function '+next+'(err, str) {\n' +
-		'	if (!'+done+') { '+done+' = '+chunk+' || function(){}; '+chunk+' = function(){}; }\n' +
-		'	if (!'+chunk+') { '+chunk+' = function(){}; }\n' +
-		'	if (err) { return '+done+'(err); }\n' +
-		'	if (str) { '+out+' += str; }\n' +
-		'	'+asyn+'.result = '+asyn+'.result || "";\n\n' +
-		'	var fn = ('+asyn+'.q || []).shift();\n' +
-		'	if (!fn) {\n' +
-		'		if ('+asyn+'.started) { '+out+' += '+asyn+'.end || ""; }\n' +
-		'		if ('+out+') { '+chunk+'('+out+'); }\n' +
-		'		return '+done+'(null, '+out+' = ('+asyn+'.result += '+out+'));\n' +
-		'	}\n' +
-		'	if ('+asyn+'.started) {\n' +
-		'		'+out+' += fn.buffer;\n' +
-		'		if ('+out+') { '+chunk+'('+out+'); }\n' +
-		'		'+asyn+'.result += '+out+'; '+out+' = "";\n' +
-		'	} else {\n' +
-		'		'+asyn+'.started = true;\n' +
-		'		'+asyn+'.end = '+out+'; '+out+' = "";\n' +
-		'		'+asyn+'.result = fn.buffer;\n' +
-		'		if ('+asyn+'.result) { '+chunk+'('+asyn+'.result); }\n' +
-		'	}\n' +
-		'	return fn();\n' +
-		'}\n';
+		fn += '\n\nvar '+out+';\n';
+
+		if (~fn.indexOf(echo)) {
+			fn += 'function '+echo+'() {\n' +
+			'	'+out+' += Array.prototype.join.call(arguments, "");\n' +
+			'}\n\n';
+		}
+		if (~fn.indexOf(esc)) {
+			fn += 'function '+esc+'() {\n' +
+			'	return Array.prototype.join.call(arguments, "").replace(/&/g, "&amp;")\n' +
+			'		.replace(/</g, "&lt;").replace(/>/g, "&gt;")\n' +
+			'		.replace(/"/g, "&#34;").replace(/\'/g, "&#39;");\n' +
+			'}\n\n';
+		}
+		if (~fn.indexOf(asyn)) {
+			fn += 'function '+asyn+'(fn) {\n' +
+			'	fn.buffer = '+out+'; '+out+' = "";\n' +
+			'	('+asyn+'.q || ('+asyn+'.q = [])).push(fn);\n' +
+			'}\n\n' +
+			'function '+next+'(err, str) {\n' +
+			'	if (!'+done+') { '+done+' = '+chunk+' || function(){}; '+chunk+' = function(){}; }\n' +
+			'	if (!'+chunk+') { '+chunk+' = function(){}; }\n' +
+			'	if (err) { return '+done+'(err); }\n' +
+			'	if (str) { '+out+' += str; }\n' +
+			'	'+asyn+'.result = '+asyn+'.result || "";\n\n' +
+			'	var fn = ('+asyn+'.q || []).shift();\n' +
+			'	if (!fn) {\n' +
+			'		if ('+asyn+'.started) { '+out+' += '+asyn+'.end || ""; }\n' +
+			'		if ('+out+') { '+chunk+'('+out+'); }\n' +
+			'		return '+done+'(null, '+out+' = ('+asyn+'.result += '+out+'));\n' +
+			'	}\n' +
+			'	if ('+asyn+'.started) {\n' +
+			'		'+out+' += fn.buffer;\n' +
+			'		if ('+out+') { '+chunk+'('+out+'); }\n' +
+			'		'+asyn+'.result += '+out+'; '+out+' = "";\n' +
+			'	} else {\n' +
+			'		'+asyn+'.started = true;\n' +
+			'		'+asyn+'.end = '+out+'; '+out+' = "";\n' +
+			'		'+asyn+'.result = fn.buffer;\n' +
+			'		if ('+asyn+'.result) { '+chunk+'('+asyn+'.result); }\n' +
+			'	}\n' +
+			'	return fn();\n' +
+			'}\n';
+		} else {
+			fn += 'function '+next+'(err, str) {\n' +
+			'	if (!'+done+') { '+done+' = '+chunk+' || function(){}; '+chunk+' = function(){}; }\n' +
+			'	if (!'+chunk+') { '+chunk+' = function(){}; }\n' +
+			'	if (err) { return '+done+'(err); }\n' +
+			'	if (str) { '+out+' += str; }\n' +
+			'	'+chunk+'('+out+');\n' +
+			'	'+done+'('+out+');\n' +
+			'}\n';
+		}
 
 		return fn;
 	}
