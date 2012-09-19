@@ -1,7 +1,7 @@
 {
 	"name": "stencil-js",
 	"description": "Async JavaScript Templating",
-	"version": "0.8.2",
+	"version": "0.8.3",
 	"author": "Andy VanWagoner <thetalecrafter@gmail.com>",
 	"keywords": [
 		"stencil",
