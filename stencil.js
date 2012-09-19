@@ -157,7 +157,7 @@
 			'	if (err) { return '+done+'(err); }\n' +
 			'	if (str) { '+out+' += str; }\n' +
 			'	'+chunk+'('+out+');\n' +
-			'	'+done+'('+out+');\n' +
+			'	'+done+'(null, '+out+');\n' +
 			'}\n';
 		}
 
