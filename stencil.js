@@ -1,4 +1,4 @@
-/*! Stencil Template v0.8.0
+/*! Stencil Template v0.8.3
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
