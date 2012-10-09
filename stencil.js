@@ -1,4 +1,4 @@
-/*! Stencil Template v0.8.3
+/*! Stencil Template v0.8.4
  *  Async templating for JavaScript
  * Copyright(c) 2012 Andy VanWagoner
  * MIT licensed **/
@@ -16,7 +16,7 @@
 		o = ('string' === typeof o) ? { src:o } : o || {};
 		if (!string && stencil.cache[o.id]) { return stencil.cache[o.id]; }
 		for (k in d) { if (!(k in o)) { o[k] = d[k]; } }
-		fn = translate(o); params = [ o.dataVar, o.chunkVar, o.doneVar ];
+		fn = translate(o); params = o.noevents ? o.dataVar : [ o.dataVar, o.chunkVar, o.doneVar ];
 		if (string) { return 'function(' + params + '){' + fn + '}'; }
 		fn = new Function(params, fn + (o.uri ? '\n//@ sourceURL=' + o.uri : ''));
 		if (o.id) { stencil.cache[o.id] = fn; }
@@ -33,15 +33,16 @@
 		echo:  '-',  /* Suffix for echoing result of the expression */
 		safe:  '=',  /* Suffix for echoing result of the expression html encoded */
 		async: '!',  /* Suffix for async blocks, Output is still in document order */
+		noevents: false, /* if true, the output code ignores events, callbacks and only returns synchonous template code */
 
 		strict:    true,     /* start function with "use strict"; or wrap function in with */
 		dataVar:   '$',      /* name of object parameter containing data mambers to use in execution */
-		chunkVar:  '\u03B9', /* name of function parameter called when each chunk is ready */
-		doneVar:   '\u03DD', /* name of function parameter called when output is complete */
-		outputVar: '\u03A3', /* name of string used to hold the output */
+		chunkVar:  '$$c',    /* name of function parameter called when each chunk is ready */
+		doneVar:   '$$z',    /* name of function parameter called when output is complete */
+		outputVar: '$$s',    /* name of string used to hold the output */
 		safeVar:   'escape', /* name of function used to encode html characters */
 		echoVar:   'print',  /* name of function used to output strings */
-		asyncVar:  '\u03BB', /* name of function used internally on async blocks */
+		asyncVar:  '$$a',    /* name of function used internally on async blocks */
 		nextVar:   'next'    /* name of function to call when done with async block */
 	};
 
@@ -105,7 +106,11 @@
 			}
 		}
 
-		fn += ';\n\n'+next+'();\nreturn ' + out + ';';
+		if (~fn.indexOf(asyn) && opts.noevents) { throw new Error('Async code cannot be eventless.'); }
+
+		fn += ';\n';
+		if (!opts.noevents) { fn += next+'();\n'; }
+		fn += 'return ' + out + ';';
 		if (!opts.strict) { fn += '\n}'; }
 		fn += '\n\nvar '+out+';\n';
 
@@ -150,7 +155,7 @@
 			'	}\n' +
 			'	return fn();\n' +
 			'}\n';
-		} else {
+		} else if (!opts.noevents) {
 			fn += 'function '+next+'(err, str) {\n' +
 			'	if (!'+done+') { '+done+' = '+chunk+' || function(){}; '+chunk+' = function(){}; }\n' +
 			'	if (!'+chunk+') { '+chunk+' = function(){}; }\n' +
@@ -164,10 +169,10 @@
 		return fn;
 	}
 
-    if ('function' === typeof define && define.amd) {
-        define(function(require, exports, module) { return stencil; }); // amd
-    }
-    else if ('undefined' === typeof exports) { global.stencil = stencil; } // browser, explicit global
-    else if ('object' !== typeof module || !module.exports) { exports.stencil = stencil; } // commonjs
-    else { module.exports = stencil; } // node
+	if ('function' === typeof define && define.amd) {
+		define(function(require, exports, module) { return stencil; }); // amd
+	}
+	else if ('undefined' === typeof exports) { global.stencil = stencil; } // browser, explicit global
+	else if ('object' !== typeof module || !module.exports) { exports.stencil = stencil; } // commonjs
+	else { module.exports = stencil; } // node
 })(this);
