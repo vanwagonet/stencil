@@ -1,0 +1,16 @@
+{
+	"name": "stencil-js",
+	"repo": "avanwago/stencil",
+	"description": "Async-ready templating engine for client and server.",
+	"version": "0.8.4",
+	"keywords": [
+		"stencil",
+		"template",
+		"view",
+		"asynchronous"
+	],
+	"main": "stencil.js",
+	"scripts": [ "stencil.js" ],
+	"license": "MIT"
+}
+

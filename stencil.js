@@ -169,9 +169,7 @@
 		return fn;
 	}
 
-	if ('function' === typeof define && define.amd) {
-		define(function(require, exports, module) { return stencil; }); // amd
-	}
+	if ('function' === typeof define && define.amd) { define(function() { return stencil; }); } // amd
 	else if ('undefined' === typeof exports) { global.stencil = stencil; } // browser, explicit global
 	else if ('object' !== typeof module || !module.exports) { exports.stencil = stencil; } // commonjs
 	else { module.exports = stencil; } // node
