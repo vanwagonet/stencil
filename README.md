@@ -19,6 +19,11 @@ does't yet.
   * Line numbers in generated code match original template
 
 
+## Install - npm
+
+`npm install stencil-js`
+
+
 ## Usage - template code
 
 Templates are specified using php/asp syntax, with code inside special tags.
