@@ -18,7 +18,7 @@
 		for (k in d) { if (!(k in o)) { o[k] = d[k]; } }
 		fn = translate(o); params = o.noevents ? o.dataVar : [ o.dataVar, o.chunkVar, o.doneVar ];
 		if (string) { return 'function(' + params + '){' + fn + '}'; }
-		fn = new Function(params, fn + (o.uri ? '\n//@ sourceURL=' + o.uri : ''));
+		fn = new Function(params, fn + (o.uri ? '\n//# sourceURL=' + o.uri : ''));
 		if (o.id) { stencil.cache[o.id] = fn; }
 		return fn;
 	};
