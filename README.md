@@ -1,5 +1,7 @@
 # stencil
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/thetalecrafter/stencil.svg)](https://greenkeeper.io/)
+
 stencil is a templating engine designed by Andy VanWagoner
 ([thetalecrafter](http://github.com/thetalecrafter))
 to enable templates to run in an environment with asynchronous I/O,
